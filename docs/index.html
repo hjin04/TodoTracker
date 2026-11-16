@@ -579,7 +579,8 @@ function renderDay(idx){
     }
     h += '</div>';
   }
-  box.innerHTML = h;
+  S.rendering = true;   // 다시 그리느라 입력칸이 사라질 때는 '밖을 누름'으로 치지 않음
+  try { box.innerHTML = h; } finally { S.rendering = false; }
   const ni = $('#newInput');
   if (ni && keep){ ni.value = keep.v; if (keep.f) ni.focus(); }
 }
@@ -619,7 +620,7 @@ document.addEventListener('submit', e => {
 });
 /* 입력칸 밖을 누르면(포커스가 빠지면) 적어 둔 할일을 자동으로 추가 */
 document.addEventListener('focusout', e => {
-  if (e.target.id !== 'newInput') return;
+  if (e.target.id !== 'newInput' || S.rendering || !e.target.isConnected) return;
   const cat = S.adding, v = e.target.value.trim();
   if (v && cat){
     // 화면은 바로 다시 그리지 않음 → 지금 누른 버튼(다른 카테고리 + 등)의 클릭이 사라지지 않게
