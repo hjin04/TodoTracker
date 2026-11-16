@@ -1,5 +1,5 @@
 /**
- * 나의 할일 — Google Apps Script 백엔드 (API 서버)
+ * TodoTracker — Google Apps Script 백엔드 (API 서버)
  * 앱 화면은 GitHub Pages / 안드로이드 앱에서 열리고, 이 스크립트와 '연결 코드'로 통신합니다.
  * 데이터: 내 구글 드라이브의 스프레드시트 "나의 할일 데이터"
  * 알림:   구글캘린더 "할일 알림" 캘린더의 일정 알림으로 휴대폰에 울림
@@ -27,7 +27,7 @@ function setup() {
   var ssId = p.getProperty('SS_ID');
   if (ssId) { try { ss = SpreadsheetApp.openById(ssId); } catch (e) { ss = null; } }
   if (!ss) {
-    ss = SpreadsheetApp.create('나의 할일 데이터 (삭제 금지)');
+    ss = SpreadsheetApp.create('TodoTracker 데이터 (삭제 금지)');
     p.setProperty('SS_ID', ss.getId());
   }
   _ss = ss;
@@ -84,7 +84,7 @@ var API = {
   load: load, saveTask: saveTask, deleteTask: deleteTask, moveTasks: moveTasks,
   saveCategory: saveCategory, deleteCategory: deleteCategory, reorderCategories: reorderCategories,
   saveRoutine: saveRoutine, deleteRoutine: deleteRoutine, saveSettings: saveSettings,
-  widget: widget, complete: complete
+  widget: widget, complete: complete, upcoming: upcoming
 };
 
 /** 앱 → POST { token, fn, args } */
@@ -97,7 +97,7 @@ function doPost(e) {
 /** 위젯 → GET ?token=..&fn=widget  /  ?token=..&fn=complete&id=.. */
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  if (!p.fn) return ContentService.createTextOutput('✅ 나의 할일 서버가 동작 중이에요. 이 주소를 앱의 "서버 주소"에 붙여넣으세요.');
+  if (!p.fn) return ContentService.createTextOutput('✅ TodoTracker 서버가 동작 중이에요. 이 주소를 앱의 "서버 주소"에 붙여넣으세요.');
   return handle_({ token: p.token, fn: p.fn, args: p.id ? [p.id] : [] });
 }
 
@@ -255,12 +255,45 @@ function moveTasks(ids, date) {
 }
 
 function saveSettings(s) {
-  props_().setProperty('AUTO_CARRY', s && s.autoCarry ? '1' : '');
+  s = s || {};
+  var before = getSettings_();
+  var p = props_();
+  p.setProperty('AUTO_CARRY', s.autoCarry ? '1' : '');
+  p.setProperty('ALARM_VIA', s.alarmVia === 'app' ? 'app' : 'calendar');
+  _settings = null;
+  // 알림 방식이 바뀌면 앞으로의 할일 캘린더 알림을 다시 맞춤 (중복 알림 방지)
+  if (before.alarmVia !== getSettings_().alarmVia) {
+    withLock_(function () {
+      var today = today_(), cats = catMap_(), sh = sheet_('tasks');
+      readRows_('tasks').forEach(function (row) {
+        if (row.deleted || row.date < today) return;
+        var t = parse_(row);
+        if (!t || !cats[t.categoryId]) return;
+        syncCalendar_(t, cats[t.categoryId]);
+        writeAt_(sh, row.row, t);
+      });
+    });
+  }
   return true;
 }
 
+var _settings = null;
 function getSettings_() {
-  return { autoCarry: props_().getProperty('AUTO_CARRY') === '1' };
+  if (_settings) return _settings;
+  var p = props_();
+  _settings = { autoCarry: p.getProperty('AUTO_CARRY') === '1', alarmVia: p.getProperty('ALARM_VIA') === 'app' ? 'app' : 'calendar' };
+  return _settings;
+}
+
+/** 휴대폰 잠금화면 알림용: 앞으로 8일 안의 미완료 할일 */
+function upcoming() {
+  var today = today_(), until = addDays_(today, 8), cats = catMap_();
+  return listObjs_('tasks').filter(function (t) {
+    if (t.done || !cats[t.categoryId]) return false;
+    return (t.date >= today && t.date <= until) || (t.due && t.due >= today && t.due <= until);
+  }).map(function (t) {
+    return { id: t.id, title: t.title, date: t.date, time: t.time || '', alarm: hasVal_(t.alarm) ? t.alarm : '', due: t.due || '', cat: cats[t.categoryId].name };
+  });
 }
 
 /** 지난 7일 동안 완료 못 한 할일(루틴 할일 제외)을 오늘로 옮김 */
@@ -378,10 +411,11 @@ function syncCalendar_(t, cat) {
     if (cat === undefined) cat = t.categoryId ? getObj_('categories', t.categoryId) : null;
     var alive = !t.deleted && cat && !cat.deleted && t.date;
     var useG = !!(alive && cat.gcal);
-    var useA = !!(alive && !useG && !t.done && hasVal_(t.alarm));
+    var viaApp = getSettings_().alarmVia === 'app'; // 휴대폰 앱이 직접 알림 → 캘린더 알림은 만들지 않음
+    var useA = !!(alive && !useG && !t.done && hasVal_(t.alarm) && !viaApp);
     var main = CalendarApp.getDefaultCalendar();
 
-    if (useG) t.gcalId = putEvent_(main, t.gcalId, t, t.done ? null : t.alarm, '', 60);
+    if (useG) t.gcalId = putEvent_(main, t.gcalId, t, (t.done || viaApp) ? null : t.alarm, '', 60);
     else if (t.gcalId) { dropEvent_(main, t.gcalId); t.gcalId = ''; }
 
     if (useA) t.alarmId = putEvent_(alarmCal_(), t.alarmId, t, t.alarm, '[' + cat.name + '] ', 30);

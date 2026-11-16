@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>나의 할일</title>
+<title>TodoTracker</title>
 <meta name="theme-color" content="#FFFFFF" id="themeMeta">
 <script>
   /* 화면 테마를 그리기 전에 적용 (깜빡임 방지) */
@@ -17,11 +17,12 @@
 :root{
   --bg:#FFFFFF; --card:#F5F5F5; --text:#111111; --sub:#8A8A8A; --line:#E7E7E7; --soft:#EDEDED; --sheet:#FFFFFF;
   --accent:#3D6BF2; --danger:#E5484D; --ok:#22B07D; --warn:#F59E0B; color-scheme:light;
+  --chip-base:#F0F0F0; --chip-tint:0%;
 }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){ --bg:#000000; --card:#121212; --text:#F2F2F2; --sub:#8C8C8C; --line:#262626; --soft:#2A2A2A; --sheet:#161616; --accent:#6E8EFF; color-scheme:dark; }
+  :root:not([data-theme="light"]){ --bg:#000000; --card:#121212; --text:#F2F2F2; --sub:#8C8C8C; --line:#262626; --soft:#2A2A2A; --sheet:#161616; --accent:#6E8EFF; color-scheme:dark; --chip-base:#121212; --chip-tint:16%; }
 }
-:root[data-theme="dark"]{ --bg:#000000; --card:#121212; --text:#F2F2F2; --sub:#8C8C8C; --line:#262626; --soft:#2A2A2A; --sheet:#161616; --accent:#6E8EFF; color-scheme:dark; }
+:root[data-theme="dark"]{ --bg:#000000; --card:#121212; --text:#F2F2F2; --sub:#8C8C8C; --line:#262626; --soft:#2A2A2A; --sheet:#161616; --accent:#6E8EFF; color-scheme:dark; --chip-base:#121212; --chip-tint:16%; }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);
   font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;font-size:15px;line-height:1.4}
@@ -79,7 +80,7 @@ header{display:flex;align-items:center;gap:2px;padding:4px 0 10px;white-space:no
 .mv-date input{flex:1;min-width:0;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
 .cat{margin-bottom:16px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
-  background:color-mix(in srgb,var(--c) 15%,var(--card));color:var(--c);font-weight:800;font-size:14px}
+  background:color-mix(in srgb,var(--c) var(--chip-tint),var(--chip-base));color:var(--c);font-weight:800;font-size:14px}
 .chip b{font-size:17px;line-height:1;font-weight:700}
 .chip .cal{font-size:12px}
 .task{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:10px}
@@ -97,6 +98,18 @@ header{display:flex;align-items:center;gap:2px;padding:4px 0 10px;white-space:no
 .sugg{opacity:.6}
 .sugg .rt{flex:none;width:22px;height:22px;border-radius:7px;border:2px dashed color-mix(in srgb,var(--c) 70%,transparent);
   display:grid;place-items:center;font-size:12px;color:var(--c)}
+#fab{position:fixed;right:max(18px,calc(50vw - 532px));bottom:calc(22px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:18px;
+  background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:30}
+#fab svg{width:26px;height:26px;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round}
+.qa-in{width:100%;min-height:96px;font-size:16px;margin-top:4px}
+.qa-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.qa-row:last-child{border-bottom:0}
+.qa-row select{flex:none;max-width:120px;background:var(--chip-base);color:var(--c);font-weight:800;border:0;border-radius:999px;padding:6px 10px;font-size:13px}
+.qa-main{flex:1;min-width:0}
+.qa-title{font-weight:700;word-break:break-word}
+.qa-meta{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:3px}
+.qa-meta span{font-size:12px;background:var(--soft);border-radius:6px;padding:1px 6px;color:var(--sub)}
+.qa-ex{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.6}
 .mini{font-size:12px;padding:4px 10px;border-radius:8px;background:var(--soft);font-weight:700;flex:none}
 .adding form{flex:1;display:flex}
 .adding input{flex:1;min-width:0;border:0;border-bottom:1.5px solid var(--c);background:transparent;padding:1px 0 4px;outline:none}
@@ -192,13 +205,14 @@ textarea{width:100%;min-height:70px;margin-top:12px;background:var(--soft);borde
     <section id="day"></section>
   </div>
 </div>
+<button id="fab" aria-label="빠르게 추가"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 <div id="settings" class="page hidden"></div>
 <div id="overlay" class="overlay hidden"><div class="backdrop" data-close></div><div class="sheet" id="sheet"></div></div>
 <div id="dialog" class="overlay hidden"><div class="backdrop"></div><div class="sheet" id="dlg"></div></div>
 <div id="toast"></div>
 <div id="connect" class="page hidden"><div class="pg">
   <img class="cn-logo" src="icons/icon-192.png" alt="">
-  <h2>나의 할일 연결</h2>
+  <h2>TodoTracker 연결</h2>
   <p class="lead">내 구글 Apps Script 서버와 연결해요. 처음 한 번만 하면 돼요.</p>
   <label class="cn-f" for="cn_url">서버 주소 <span style="font-weight:500">(또는 기기 연결 코드)</span></label>
   <input class="cn-in" id="cn_url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
@@ -251,6 +265,20 @@ function routineMatches(r, s){
     case 'interval': { const n = Math.max(1, Number(r.every) || 1); return ((dayNum(s) - dayNum(r.start || s)) % n) === 0; }
   }
   return false;
+}
+/* 배경(흰색/검정)에 대비해 글자가 잘 보이도록 카테고리 색을 살짝 진하게/밝게 조정 */
+const inkCache = {};
+function isDarkMode(){ const t = S.look.theme; return t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); }
+function ink(hex){
+  const dark = isDarkMode(), key = hex + dark;
+  if (inkCache[key]) return inkCache[key];
+  let h = String(hex || '#888888').replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join('');
+  let rgb = [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16) || 0);
+  const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+  const ok = c => dark ? (lum(c) + .05) / (0.024 + .05) >= 3.2 : (0.87 + .05) / (lum(c) + .05) >= 3.2;
+  const toward = dark ? 255 : 0;
+  for (let i = 0; i < 12 && !ok(rgb); i++) rgb = rgb.map(v => Math.round(v + (toward - v) * 0.12));
+  return inkCache[key] = '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
 }
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200); }
 const store = {
@@ -384,6 +412,7 @@ function flushAfter(){
     store.set(CACHE_KEY, JSON.stringify({ cats: Object.values(S.cats), routines: Object.values(S.routines), prefs: S.prefs,
       tasks: Object.values(S.tasks).filter(t => t.date >= lo && t.date <= hi) }));
     if (!IS_APP) return;
+    pushUpcoming();
     const list = (idx[S.today] || []), left = list.filter(t => !t.done)
       .sort((a, b) => ((S.cats[a.categoryId].order ?? 0) - (S.cats[b.categoryId].order ?? 0)) || cmpTask(a, b));
     try {
@@ -394,6 +423,25 @@ function flushAfter(){
 }
 addEventListener('pagehide', flushAfter);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAfter(); });
+
+/* 휴대폰 잠금화면 알림용으로 앞으로 8일 안의 할일을 앱에 전달 */
+function pushUpcoming(){
+  if (!window.TodoAndroid || !window.TodoAndroid.setUpcoming) return;
+  const until = addDays(S.today, 8);
+  const list = Object.values(S.tasks).filter(t => !t.done && S.cats[t.categoryId] && ((t.date >= S.today && t.date <= until) || (t.due && t.due >= S.today && t.due <= until)))
+    .map(t => ({ id: t.id, title: t.title, date: t.date, time: t.time || '', alarm: hasVal(t.alarm) ? String(t.alarm) : '', due: t.due || '', cat: S.cats[t.categoryId].name }));
+  try { window.TodoAndroid.setUpcoming(JSON.stringify(list)); } catch (e) {}
+}
+function reminderPrefs(){
+  try { return JSON.parse(window.TodoAndroid.getReminderPrefs()); } catch (e) { return { enabled: false, offset: -1, due: 'eve', morning: false }; }
+}
+function saveReminderPrefs(r){
+  try { window.TodoAndroid.setReminderPrefs(JSON.stringify(r)); } catch (e) {}
+  if (r.enabled) try { window.TodoAndroid.requestNotifyPermission(); } catch (e) {}
+  const via = r.enabled ? 'app' : 'calendar';
+  if ((S.prefs.alarmVia || 'calendar') !== via){ S.prefs = { ...S.prefs, alarmVia: via }; const pr = S.prefs; enqueue('prefs', () => api('saveSettings', pr)); }
+  pushUpcoming();
+}
 
 /* 안드로이드 뒤로가기: 열린 창부터 닫기 */
 function handleBack(){
@@ -411,7 +459,7 @@ function copyText(text){
 }
 function apkUrl(){
   const m = location.hostname.match(/^([^.]+)\.github\.io$/), repo = location.pathname.split('/').filter(Boolean)[0];
-  return m && repo ? `https://github.com/${m[1]}/${repo}/releases/latest/download/my-todo.apk` : '';
+  return m && repo ? `https://github.com/${m[1]}/${repo}/releases/latest/download/TodoTracker.apk` : '';
 }
 function renderHeader(){
   const [y, m] = P(S.ym);
@@ -478,16 +526,16 @@ function renderDay(idx){
     const tasks = list.filter(t => t.categoryId === c.id).sort(cmpTask);
     const sugg = Object.values(S.routines).filter(r => !r.deleted && r.categoryId === c.id && routineMatches(r, S.sel)
       && !Object.values(S.tasks).some(t => t.routineId === r.id && (t.date === S.sel || t.key === r.id + '|' + S.sel)));
-    h += `<div class="cat"><button class="chip" style="--c:${c.color}" data-add="${c.id}">${c.gcal ? '<span class="cal">📅</span>' : ''}${esc(c.name)} <b>+</b></button>`;
+    h += `<div class="cat"><button class="chip" style="--c:${ink(c.color)}" data-add="${c.id}">${c.gcal ? '<span class="cal">📅</span>' : ''}${esc(c.name)} <b>+</b></button>`;
     for (const t of tasks){
-      h += `<div class="task ${t.done ? 'done' : ''}"><button class="chk ${t.done ? 'on' : ''}" style="--c:${c.color}" data-chk="${t.id}" aria-label="완료">${t.done ? CHECK : ''}</button>
+      h += `<div class="task ${t.done ? 'done' : ''}"><button class="chk ${t.done ? 'on' : ''}" style="--c:${ink(c.color)}" data-chk="${t.id}" aria-label="완료">${t.done ? CHECK : ''}</button>
         <div class="body" data-edit="${t.id}"><div class="title">${esc(t.title)}</div>${metaHtml(t)}</div></div>`;
     }
     for (const r of sugg){
-      h += `<div class="task sugg" style="--c:${c.color}"><span class="rt">↻</span><div class="body"><div class="title">${esc(r.title)}</div>${r.time ? `<div class="meta"><span>${r.time}</span></div>` : ''}</div><button class="mini" data-addr="${r.id}">추가</button></div>`;
+      h += `<div class="task sugg" style="--c:${ink(c.color)}"><span class="rt">↻</span><div class="body"><div class="title">${esc(r.title)}</div>${r.time ? `<div class="meta"><span>${r.time}</span></div>` : ''}</div><button class="mini" data-addr="${r.id}">추가</button></div>`;
     }
     if (S.adding === c.id){
-      h += `<div class="task adding" style="--c:${c.color}"><span class="chk"></span><form id="newForm"><input id="newInput" placeholder="할일 입력 후 Enter" enterkeyhint="done" autocomplete="off"></form></div>`;
+      h += `<div class="task adding" style="--c:${ink(c.color)}"><span class="chk"></span><form id="newForm"><input id="newInput" placeholder="할일 입력 후 Enter" enterkeyhint="done" autocomplete="off"></form></div>`;
     }
     h += '</div>';
   }
@@ -536,7 +584,7 @@ document.addEventListener('focusout', e => {
 /* ───────── 시트 / 대화상자 ───────── */
 let sheetHandler = null;
 function openSheet(html, handler){ $('#sheet').innerHTML = html; $('#overlay').classList.remove('hidden'); sheetHandler = handler; }
-function closeSheet(){ $('#overlay').classList.add('hidden'); $('#sheet').innerHTML = ''; sheetHandler = null; }
+function closeSheet(){ $('#overlay').classList.add('hidden'); $('#sheet').innerHTML = ''; $('#sheet').onchange = null; sheetHandler = null; }
 $('#overlay').addEventListener('click', e => {
   if (e.target.matches('[data-close]')) return closeSheet();
   const b = e.target.closest('button'); if (b && sheetHandler) sheetHandler(b, e);
@@ -569,7 +617,7 @@ function openCarrySheet(){
   const picked = new Set(items.map(t => t.id));
   const tomorrow = addDays(day, 1);
   const rows = () => items.map(t => { const c = S.cats[t.categoryId], on = picked.has(t.id);
-    return `<button class="mv-row" data-pick="${t.id}"><span class="chk ${on ? 'on' : ''}" style="--c:${c.color}">${on ? CHECK : ''}</span><span>${esc(t.title)}</span><span class="s">${esc(c.name)}</span></button>`; }).join('');
+    return `<button class="mv-row" data-pick="${t.id}"><span class="chk ${on ? 'on' : ''}" style="--c:${ink(c.color)}">${on ? CHECK : ''}</span><span>${esc(t.title)}</span><span class="s">${esc(c.name)}</span></button>`; }).join('');
   openSheet(`
     <div class="sh-h"><button class="btn" data-act="close">닫기</button><b>미완료 할일 넘기기</b><button class="btn" data-act="all">전체 선택</button></div>
     <div class="mv-list" id="mv_list">${rows()}</div>
@@ -592,7 +640,7 @@ function openCarrySheet(){
   });
 }
 const alarmOptions = v => ALARMS.map(([k, l]) => `<option value="${k}" ${String(v ?? '') === k ? 'selected' : ''}>${l}</option>`).join('');
-const catChips = sel => sortedCats().map(c => `<button class="opt ${c.id === sel ? 'on' : ''}" style="--c:${c.color}" data-cat="${c.id}">${esc(c.name)}</button>`).join('');
+const catChips = sel => sortedCats().map(c => `<button class="opt ${c.id === sel ? 'on' : ''}" style="--c:${ink(c.color)}" data-cat="${c.id}">${esc(c.name)}</button>`).join('');
 function pickOne(container, btn){ container.querySelectorAll('.on').forEach(x => x.classList.remove('on')); btn.classList.add('on'); }
 function alarmHint(){
   const h = $('#e_ahint'); if (!h) return;
@@ -652,6 +700,24 @@ function rtSummary(r){
   if (r.end) s += ` · ~${r.end.slice(5).replace('-', '/')}`;
   return s;
 }
+function notifySection(){
+  if (!IS_APP || !window.TodoAndroid.setReminderPrefs){
+    return `<div class="list" style="margin-bottom:14px"><div class="li" style="padding:14px"><div class="li-main"><span>🔔 잠금화면 알림</span><span class="s">안드로이드 앱(최신 버전)의 ⚙ 설정 → 기타에서 켤 수 있어요. 지금은 구글캘린더 "할일 알림"으로 알려요.</span></div></div></div>`;
+  }
+  const r = reminderPrefs();
+  const opt = (name, list, cur) => `<div class="chips">${list.map(([k, l]) => `<button class="opt ${String(cur) === String(k) ? 'on' : ''}" data-rp="${name}" data-v="${k}">${l}</button>`).join('')}</div>`;
+  return `<div class="list" style="margin-bottom:14px">
+    <div class="li" style="padding:14px"><div class="li-main"><span>🔔 잠금화면 알림 (이 휴대폰)</span><span class="s">켜면 이 앱이 직접 알려요. 구글캘린더 "할일 알림"은 더 이상 만들지 않아 알림이 두 번 오지 않아요.</span></div>
+      <input type="checkbox" class="sw" id="rp_on" ${r.enabled ? 'checked' : ''}></div>
+    ${r.enabled ? `
+    <div class="li" style="padding:14px;flex-wrap:wrap;gap:10px"><div class="li-main"><span>⏰ 시간 정한 할일</span><span class="s">할일에 알림을 따로 정하면 그게 우선이에요</span></div>
+      ${opt('offset', [[-1, '정한 것만'], [0, '정시'], [10, '10분 전'], [30, '30분 전'], [60, '1시간 전']], r.offset)}</div>
+    <div class="li" style="padding:14px;flex-wrap:wrap;gap:10px"><div class="li-main"><span>📌 기한 임박</span><span class="s">기한(D-day)을 정한 할일</span></div>
+      ${opt('due', [['off', '끄기'], ['eve', '전날 밤 9시'], ['day', '당일 아침 9시'], ['both', '둘 다']], r.due)}</div>
+    <div class="li" style="padding:14px"><div class="li-main"><span>☀️ 아침 요약 (오전 8시)</span><span class="s">오늘 할일 개수와 목록을 알려줘요</span></div>
+      <input type="checkbox" class="sw" id="rp_morning" ${r.morning ? 'checked' : ''}></div>` : ''}
+  </div>`;
+}
 function renderSettings(){
   const tab = S.settings;
   let h = `<div class="pg"><div class="pg-h"><button class="icon-btn" data-act="back" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button><b>설정</b></div>
@@ -689,13 +755,15 @@ function renderSettings(){
         <div class="chips">${[['clover','4분할'],['gradient','그라데이션']].map(([k, l]) => `<button class="opt ${S.look.badge === k ? 'on' : ''}" data-badge-set="${k}">${l}</button>`).join('')}</div></div>
       ${IS_APP && window.TodoAndroid.widgetStatus ? `<div class="li" style="padding:14px"><div class="li-main"><span>🧩 위젯 상태</span><span class="s" id="wStatus">${esc(window.TodoAndroid.widgetStatus())}</span></div></div>` : ''}
     </div>
+    ${notifySection()}
     <div class="list" style="margin-bottom:14px"><div class="li" style="padding:14px"><div class="li-main"><span>못 한 일 자동으로 넘기기</span>
       <span class="s">매일 자정, 지난 7일 동안 완료 못 한 할일을 오늘로 옮겨요 (루틴 할일은 제외)</span></div>
       <input type="checkbox" class="sw" id="p_carry" ${S.prefs && S.prefs.autoCarry ? 'checked' : ''}></div></div>
       <div class="info">
       <h4>↪ 할일 넘기기</h4><p>날짜 제목 옆 [미완료 N개 넘기기]를 누르면 못 한 할일을 골라 내일, 오늘 또는 원하는 날짜로 한 번에 옮길 수 있어요. 하나만 옮길 때는 할일을 눌러 [내일 하기] 또는 [다른 날로]를 쓰세요. 옮겨진 할일에는 "↪ 원래 날짜"가 표시돼요.</p>
-      <h4>🔄 동기화</h4><p>모든 데이터는 내 구글 드라이브의 "나의 할일 데이터" 시트에 저장돼요. 폰·PC·안드로이드 앱이 같은 서버에 연결되어 자동으로 맞춰지고, 다른 기기에서 바꾼 내용은 20초 안에(또는 앱으로 돌아올 때) 반영돼요. 제목 옆 점이 초록색이면 저장 완료, 주황색이면 저장 중이에요.</p>
-      <h4>🔔 시간 알림</h4><p>할일에 시간과 알림을 정하면 구글캘린더의 "할일 알림" 캘린더에 일정이 생기고, 휴대폰 캘린더 앱이 그 시간에 알림을 보내 줘요. 완료 체크하면 알림 일정은 자동으로 지워져요.</p>
+      <h4>🔄 동기화</h4><p>모든 데이터는 내 구글 드라이브의 "TodoTracker 데이터" 시트 (예전에 만든 경우 "나의 할일 데이터")에 저장돼요. 폰·PC·안드로이드 앱이 같은 서버에 연결되어 자동으로 맞춰지고, 다른 기기에서 바꾼 내용은 20초 안에(또는 앱으로 돌아올 때) 반영돼요. 제목 옆 점이 초록색이면 저장 완료, 주황색이면 저장 중이에요.</p>
+      <h4>✏️ 빠르게 추가</h4><p>오른쪽 아래 ＋ 버튼을 누르고 "내일 오후 3시 치과", "금요일까지 레포트 제출"처럼 말하듯 적으면 날짜·시간·기한·카테고리를 알아서 채워요. 한 줄에 하나씩 여러 개를 한 번에 넣을 수 있고, 저장 전에 카테고리를 바꿀 수 있어요. "#카테고리"로 직접 정할 수도 있어요.</p>
+      <h4>🔔 시간 알림</h4><p>기본은 구글캘린더 "할일 알림" 캘린더로 알려요. 안드로이드 앱에서 "잠금화면 알림"을 켜면 앱이 직접 알려 주고, 알림에서 바로 완료할 수도 있어요.</p>
       <h4>📅 구글캘린더 연동</h4><p>카테고리 설정에서 "구글캘린더 연동"을 켠 카테고리(기본: 외출)의 할일은 내 기본 구글캘린더에 일정으로 등록·수정·삭제돼요. 시간이 없으면 오전 8시~9시 일정으로 들어가요.</p>
       <h4>↻ 루틴</h4><p>"자동 추가"를 켜면 매일 자정에 앞으로 7일치 할일이 자동으로 생겨요. 끄면 해당 요일에 흐리게 표시되고 [추가]를 눌러 직접 넣을 수 있어요. 자동 추가된 할일을 지우면 그날은 다시 생기지 않아요.</p>
       <h4>📌 기한</h4><p>할일에 기한을 정하면 D-day가 표시돼요. 기한이 하루 이내로 남으면 빨간색으로 바뀌어요.</p></div>`;
@@ -703,6 +771,13 @@ function renderSettings(){
   $('#settings').innerHTML = h + '</div>';
 }
 $('#settings').addEventListener('change', e => {
+  if (e.target.id === 'rp_on' || e.target.id === 'rp_morning'){
+    const r = reminderPrefs();
+    if (e.target.id === 'rp_on') r.enabled = e.target.checked; else r.morning = e.target.checked;
+    saveReminderPrefs(r); renderSettings();
+    if (e.target.id === 'rp_on') toast(r.enabled ? '잠금화면 알림을 켰어요' : '잠금화면 알림을 껐어요 (캘린더 알림으로 돌아가요)');
+    return;
+  }
   if (e.target.id !== 'p_carry') return;
   S.prefs = { ...(S.prefs || {}), autoCarry: e.target.checked };
   const prefs = S.prefs;
@@ -715,6 +790,7 @@ $('#settings').addEventListener('click', e => {
   if (ds.act === 'back'){ S.settings = null; $('#settings').classList.add('hidden'); render(); return; }
   if (ds.act === 'copyconn'){ copyText($('#connCode').value); return; }
   if (ds.themeSet){ S.look.theme = ds.themeSet; store.set('todo.theme', ds.themeSet); applyTheme(); renderSettings(); return; }
+  if (ds.rp){ const r = reminderPrefs(); r[ds.rp] = ds.rp === 'offset' ? Number(ds.v) : ds.v; saveReminderPrefs(r); renderSettings(); return; }
   if (ds.badgeSet){ S.look.badge = ds.badgeSet; store.set('todo.badge', ds.badgeSet); renderSettings(); render(); return; }
   if (ds.act === 'disconnect'){
     confirmBox('이 기기에서 연결을 해제할까요?\n(서버의 데이터는 지워지지 않아요)', '해제').then(ok => {
@@ -747,17 +823,17 @@ function openCatEditor(id){
     <input id="c_name" class="big" value="${esc(c.name)}" placeholder="카테고리 이름" maxlength="20">
     <div class="lbl">색상</div>
     <div class="swatches" id="c_sw">${PALETTE.map(p => `<button class="swc ${p === c.color.toUpperCase() ? 'on' : ''}" style="--c:${p}" data-color="${p}" aria-label="${p}"></button>`).join('')}</div>
-    <div class="custom-color"><input type="color" id="c_custom" value="${c.color}"><span>직접 고르기</span><span class="chip preview-chip" id="c_prev" style="--c:${c.color}">${esc(c.name || '미리보기')}</span></div>
+    <div class="custom-color"><input type="color" id="c_custom" value="${c.color}"><span>직접 고르기</span><span class="chip preview-chip" id="c_prev" style="--c:${ink(c.color)}">${esc(c.name || '미리보기')}</span></div>
     <div class="field" style="margin-top:12px"><label class="grow" style="width:auto;color:var(--text)">📅 구글캘린더 연동</label><input type="checkbox" class="sw" id="c_gcal" ${c.gcal ? 'checked' : ''}>
       <span class="hint" style="padding-left:0">켜면 이 카테고리의 할일이 내 구글캘린더에 일정으로 등록돼요.</span></div>
     ${isNew ? '' : '<div class="acts"><button class="btn danger" data-act="del">카테고리 삭제</button></div>'}`,
   async (b, e) => {
     if (!b){
-      if (e && e.target.id === 'c_custom'){ c.color = e.target.value.toUpperCase(); $('#c_sw').querySelectorAll('.on').forEach(x => x.classList.remove('on')); $('#c_prev').style.setProperty('--c', c.color); }
+      if (e && e.target.id === 'c_custom'){ c.color = e.target.value.toUpperCase(); $('#c_sw').querySelectorAll('.on').forEach(x => x.classList.remove('on')); $('#c_prev').style.setProperty('--c', ink(c.color)); }
       if (e && e.target.id === 'c_name') $('#c_prev').textContent = e.target.value || '미리보기';
       return;
     }
-    if (b.dataset.color){ c.color = b.dataset.color; pickOne($('#c_sw'), b); $('#c_custom').value = c.color; $('#c_prev').style.setProperty('--c', c.color); return; }
+    if (b.dataset.color){ c.color = b.dataset.color; pickOne($('#c_sw'), b); $('#c_custom').value = c.color; $('#c_prev').style.setProperty('--c', ink(c.color)); return; }
     switch (b.dataset.act){
       case 'close': closeSheet(); break;
       case 'save': {
@@ -849,9 +925,135 @@ function openRoutineEditor(id){
   if (isNew) setTimeout(() => $('#r_title') && $('#r_title').focus(), 50);
 }
 
+/* ───────── 빠른 추가: 말하듯 쓰면 날짜·시간·카테고리를 알아서 ───────── */
+const KEYWORDS = {
+  '과제': ['과제','레포트','리포트','보고서','제출','에세이','발표','팀플','숙제','ppt','피피티','과제물'],
+  '공부': ['공부','복습','예습','단어','토익','토플','아이엘츠','ielts','인강','문제','풀기','듀오링고','암기','독서','책 읽기','리딩','리스닝','라이팅','스피킹'],
+  '학교생활': ['수업','강의','상담','교수','학교','동아리','학과','시험','중간고사','기말','등록','수강','휴학','학생회','개강','종강','대면'],
+  '자기관리': ['운동','헬스','필라테스','요가','영양제','청소','빨래','일기','스트레칭','산책','피부','러닝','명상','다이어트','물 마시기','약 먹기','폼롤러','샤워'],
+  '외출': ['약속','만남','만나','병원','치과','미용실','카페','영화','여행','정신과','진료','예약','모임','데이트','식사','저녁약속','점심약속','출국','비행기','공항','면접'],
+};
+const WDK = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+function nearestMD(m, d){ let y = +S.today.slice(0, 4); let r = ymd(y, m, Math.min(d, dim(y, m))); if (r < addDays(S.today, -31)) r = ymd(y + 1, m, Math.min(d, dim(y + 1, m))); return r; }
+function nearestDay(d){ let [y, m] = P(S.today); if (d < +S.today.slice(8)) { m++; if (m > 12){ m = 1; y++; } } return ymd(y, m, Math.min(d, dim(y, m))); }
+function to24(ap, h, mi){
+  h = +h; mi = +(mi || 0);
+  if (/오후|저녁|밤/.test(ap || '')) { if (h < 12) h += 12; }
+  else if (/오전|아침|새벽/.test(ap || '')) { if (h === 12) h = 0; }
+  else if (/낮|점심/.test(ap || '')) { if (h < 7) h += 12; }
+  else if (h >= 1 && h <= 7) h += 12;
+  if (h >= 24) h = 23;
+  return pad(h) + ':' + pad(mi);
+}
+function guessCategory(text){
+  const cats = sortedCats(); if (!cats.length) return null;
+  const low = text.toLowerCase(), score = {};
+  cats.forEach(c => { score[c.id] = 0; (KEYWORDS[c.name] || []).forEach(k => { if (low.includes(k)) score[c.id] += 2 + k.length; }); });
+  // 지금까지 쓴 할일에서 배우기: 같은 단어가 들어간 할일이 많았던 카테고리
+  const words = low.split(/\s+/).filter(w => w.length >= 2);
+  Object.values(S.tasks).concat(Object.values(S.routines)).forEach(t => {
+    if (!score.hasOwnProperty(t.categoryId)) return;
+    const tw = String(t.title).toLowerCase().split(/\s+/);
+    words.forEach(w => { if (tw.some(x => x.length >= 2 && (x.startsWith(w) || w.startsWith(x)))) score[t.categoryId] += 1; });
+  });
+  let best = null; cats.forEach(c => { if (score[c.id] > 0 && (!best || score[c.id] > score[best.id])) best = c; });
+  return best || cats.find(c => c.name === '그외') || cats[cats.length - 1];
+}
+function parseQuick(raw){
+  let s = ' ' + raw.trim().replace(/\s+/g, ' ') + ' ';
+  const r = { title: '', date: '', time: '', endTime: '', due: '', alarm: '', categoryId: '' };
+  const cut = re => { const m = s.match(re); if (m) s = s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length); return m; };
+  let m = cut(/#(\S+)/);
+  if (m){ const c = sortedCats().find(c => c.name === m[1] || c.name.startsWith(m[1])); if (c) r.categoryId = c.id; }
+  for (const c of sortedCats()){ const re = new RegExp('^\\s*' + c.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:：]?\\s'); if (!r.categoryId && re.test(s)){ r.categoryId = c.id; s = s.replace(re, ' '); } }
+  if ((m = cut(/(\d+)\s*(분|시간)\s*전(에)?\s*(알림|알려\S*)/))) r.alarm = String(m[2] === '시간' ? m[1] * 60 : +m[1]);
+  else if (cut(/하루\s*전(에)?\s*(알림|알려\S*)/)) r.alarm = '1440';
+  else if (cut(/\s(알림|알려\S*)(?=\s)/)) r.alarm = '0';
+  // 날짜 (뒤에 '까지'가 붙으면 기한)
+  const DATE = [
+    [/(\d{4})\s*[년.\/-]\s*(\d{1,2})\s*[월.\/-]\s*(\d{1,2})\s*일?/, m => ymd(+m[1], +m[2], +m[3])],
+    [/(\d{1,2})\s*월\s*(\d{1,2})\s*일?/, m => nearestMD(+m[1], +m[2])],
+    [/(?<![\d:])(\d{1,2})[\/.](\d{1,2})(?![\d:])/, m => nearestMD(+m[1], +m[2])],
+    [/(오늘|내일|낼|모레|글피)/, m => addDays(S.today, { 오늘: 0, 내일: 1, 낼: 1, 모레: 2, 글피: 3 }[m[1]])],
+    [/(\d+)\s*일\s*(뒤|후)/, m => addDays(S.today, +m[1])],
+    [/(이번\s*주|다음\s*주|담주|다다음\s*주)?\s*([일월화수목금토])\s*(요일|욜)/, m => {
+      const wd = WDK[m[2]], pre = (m[1] || '').replace(/\s/g, '');
+      if (!pre){ return addDays(S.today, (wd - dow(S.today) + 7) % 7); }
+      const mon = addDays(S.today, -((dow(S.today) + 6) % 7)), k = pre === '이번주' ? 0 : pre === '다다음주' ? 2 : 1;
+      return addDays(mon, 7 * k + (wd + 6) % 7);
+    }],
+    [/(?<![\d월])(\d{1,2})\s*일(?!\s*(뒤|후|마다|동안|간))/, m => nearestDay(+m[1])],
+  ];
+  for (const [re, fn] of DATE){
+    const mm = cut(new RegExp(re.source + '(\\s*까지)?'));
+    if (mm){ const d = fn(mm); if (mm[mm.length - 1]) r.due = d; else r.date = d; break; }
+  }
+  if (!r.due && (m = cut(/(이번\s*주|이번주)\s*까지/))) r.due = addDays(S.today, (7 - dow(S.today)) % 7);
+  // 시간 (범위 포함)
+  const T = '(오전|오후|아침|점심|낮|저녁|밤|새벽)?\\s*(\\d{1,2})(?:\\s*시(?!간)\\s*(?:(\\d{1,2})\\s*분|(반))?|:(\\d{2}))';
+  m = cut(new RegExp(T + '(?:\\s*(?:부터|~|-|에서)\\s*' + T + ')?(\\s*까지)?'));
+  if (m){
+    const ctxAP = m[1] || (/(아침|오전|새벽|기상|모닝)/.test(raw) ? '오전' : /(저녁|밤|오후)/.test(raw) ? '오후' : '');
+    r.time = to24(ctxAP, m[2], m[4] ? 30 : (m[3] || m[5]));
+    if (m[7]) r.endTime = to24(m[6] || (/(오후|저녁|밤)/.test(ctxAP) ? '오후' : /(오전|아침|새벽)/.test(ctxAP) && +m[7] > +m[2] ? '오전' : ''), m[7], m[9] ? 30 : (m[8] || m[10]));
+    if (r.endTime && r.endTime <= r.time) r.endTime = '';
+  } else if (cut(/정오/)) r.time = '12:00';
+  r.title = s.replace(/\s(에|에는|까지|부터|에서|쯤|정도|에\s*있는)(?=\s)/g, ' ').replace(/\s+/g, ' ').trim().replace(/^(에|까지)\s+/, '');
+  if (!r.title) r.title = raw.trim();
+  if (!r.categoryId){ const c = guessCategory(raw); r.categoryId = c ? c.id : ''; }
+  if (!r.date) r.date = S.sel;
+  return r;
+}
+function openQuickAdd(){
+  if (!sortedCats().length) return toast('먼저 카테고리를 만들어 주세요');
+  let items = [];
+  const fmt = d => { const [, mm, dd] = P(d); return `${mm}/${dd}(${WD[dow(d)]})`; };
+  const preview = () => {
+    const box = $('#qa_list');
+    items = $('#qa_in').value.split('\n').map(x => x.trim()).filter(Boolean).map((line, i) => {
+      const prev = items[i]; const it = parseQuick(line);
+      if (prev && prev.line === line && prev.userCat) { it.categoryId = prev.categoryId; it.userCat = true; }
+      it.line = line; return it;
+    });
+    box.innerHTML = items.length ? items.map((it, i) => { const c = S.cats[it.categoryId];
+      const dl = dateLabel(it.date), meta = [`📅 ${/월/.test(dl) ? fmt(it.date) : dl + ' ' + fmt(it.date)}`];
+      if (it.time) meta.push(`⏰ ${it.time}${it.endTime ? '–' + it.endTime : ''}`);
+      if (it.due) meta.push(`📌 ${fmt(it.due)}까지`);
+      if (hasVal(it.alarm)) meta.push(`🔔 ${(ALARMS.find(a => a[0] === it.alarm) || [0, it.alarm + '분 전'])[1]}`);
+      return `<div class="qa-row"><select data-qi="${i}" style="--c:${c ? ink(c.color) : 'inherit'}">${sortedCats().map(k => `<option value="${k.id}" ${k.id === it.categoryId ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>
+        <div class="qa-main"><div class="qa-title">${esc(it.title)}</div><div class="qa-meta">${meta.map(x => `<span>${esc(x)}</span>`).join('')}</div></div></div>`; }).join('')
+      : '';
+    $('#qa_save').textContent = items.length > 1 ? `${items.length}개 추가` : '추가';
+  };
+  openSheet(`
+    <div class="sh-h"><button class="btn" data-act="close">닫기</button><b>빠르게 추가</b><button class="btn pri" data-act="save" id="qa_save">추가</button></div>
+    <textarea id="qa_in" class="qa-in" placeholder="말하듯이 적어 보세요 (한 줄에 하나씩)"></textarea>
+    <div id="qa_list"></div>
+    <div class="qa-ex">예) 내일 오후 3시 치과 · 금요일까지 레포트 제출 · 11월 24일 기생통 시험 · 다음주 화요일 2시~4시 팀플 · 30분 전 알림 · #학교생활<br>날짜가 없으면 선택한 날(${esc(dateLabel(S.sel))})에 들어가요. 카테고리는 단어와 지금까지 쓴 할일을 보고 골라요.</div>`,
+  (b, e) => {
+    if (!b){
+      if (e && e.target.id === 'qa_in') preview();
+      return;
+    }
+    if (b.dataset.act === 'close') return closeSheet();
+    if (b.dataset.act === 'save'){
+      preview();
+      if (!items.length) return toast('할일을 적어 주세요');
+      items.forEach(it => saveTask(newTask({ title: it.title, categoryId: it.categoryId, date: it.date, time: it.time, endTime: it.endTime, due: it.due, alarm: it.alarm })));
+      closeSheet();
+      const dates = [...new Set(items.map(i => i.date))];
+      toast(items.length === 1 ? `${dateLabel(items[0].date)}에 추가했어요` : `${items.length}개 추가했어요`);
+      if (dates.length === 1 && dates[0] !== S.sel) goto(dates[0]);
+    }
+  });
+  $('#sheet').onchange = e => { const i = e.target.dataset.qi; if (i === undefined) return; items[i].categoryId = e.target.value; items[i].userCat = true; e.target.style.setProperty('--c', ink(S.cats[e.target.value].color)); };
+  setTimeout(() => $('#qa_in') && $('#qa_in').focus(), 60);
+}
+$('#fab').addEventListener('click', openQuickAdd);
+
 /* ───────── 연결 화면 ───────── */
 function showConnect(){
-  $('#app').classList.add('hidden');
+  $('#app').classList.add('hidden'); $('#fab').classList.add('hidden');
   $('#connect').classList.remove('hidden');
 }
 $('#cn_go').addEventListener('click', async () => {
@@ -868,7 +1070,7 @@ $('#cn_go').addEventListener('click', async () => {
     const d = await callServer(conn, 'load', [r.from, r.to]);
     CONN = conn; store.set(CONN_KEY, JSON.stringify(conn));
     if (IS_APP) try { window.TodoAndroid.setConnection(url, token); } catch (e) {}
-    $('#connect').classList.add('hidden'); $('#app').classList.remove('hidden');
+    $('#connect').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#fab').classList.remove('hidden');
     applyLoad(d); toast('연결됐어요!');
   } catch (e) {
     msg.textContent = e.message;

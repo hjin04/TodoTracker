@@ -42,13 +42,14 @@ jobs:
           ./gradlew assembleRelease --no-daemon \
             -PappUrl="https://${OWNER}.github.io/${REPO}/" \
             -PversionCode=${{ github.run_number }}
-          cp app/build/outputs/apk/release/app-release.apk ../my-todo.apk
+          cp app/build/outputs/apk/release/app-release.apk ../TodoTracker.apk
+          cp ../TodoTracker.apk ../my-todo.apk   # 예전 다운로드 주소 호환
 
       - name: 릴리스에 올리기 (고정 다운로드 주소)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest my-todo.apk \
-            --title "나의 할일 안드로이드 앱 (빌드 ${{ github.run_number }})" \
-            --notes "휴대폰에서 my-todo.apk 를 눌러 내려받아 설치하세요."
+          gh release create latest TodoTracker.apk my-todo.apk \
+            --title "TodoTracker 안드로이드 앱 (빌드 ${{ github.run_number }})" \
+            --notes "휴대폰에서 TodoTracker.apk 를 눌러 내려받아 설치하세요."

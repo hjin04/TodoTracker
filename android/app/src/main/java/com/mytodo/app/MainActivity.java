@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
         });
         web.addJavascriptInterface(new Bridge(this, this), "TodoAndroid");
 
+        SyncJob.schedule(this);
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl(BuildConfig.APP_URL);
     }
@@ -93,6 +94,24 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String widgetStatus() { return TodoWidget.status(ctx); }
+
+        /* ───── 잠금화면 알림 ───── */
+        @JavascriptInterface
+        public void setUpcoming(String json) { Reminders.setUpcoming(ctx, json); }
+
+        @JavascriptInterface
+        public String getReminderPrefs() { return Reminders.getPrefs(ctx); }
+
+        @JavascriptInterface
+        public void setReminderPrefs(String json) { Reminders.setPrefs(ctx, json); }
+
+        @JavascriptInterface
+        public void requestNotifyPermission() {
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                act.runOnUiThread(() -> act.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 11));
+            }
+        }
 
         /** 앱 테마(흰색/검정)에 맞춰 상단·하단 바 색 변경 */
         @JavascriptInterface
