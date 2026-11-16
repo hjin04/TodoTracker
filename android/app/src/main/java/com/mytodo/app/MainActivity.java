@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -32,6 +33,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setTextZoom(100); // 휴대폰 글자 크기 설정과 상관없이 화면 배치 유지
 
         final Uri home = Uri.parse(BuildConfig.APP_URL);
         web.setWebViewClient(new WebViewClient() {
@@ -43,7 +45,7 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
-        web.addJavascriptInterface(new Bridge(this), "TodoAndroid");
+        web.addJavascriptInterface(new Bridge(this, this), "TodoAndroid");
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl(BuildConfig.APP_URL);
@@ -60,7 +62,7 @@ public class MainActivity extends Activity {
         super.onResume();
         web.onResume();
         // 위젯에서 체크한 내용 등을 바로 반영
-        web.evaluateJavascript("window.refresh && refresh()", null);
+        web.evaluateJavascript("window.onAppResume ? onAppResume() : (window.refresh && refresh())", null);
     }
 
     @Override
@@ -82,7 +84,31 @@ public class MainActivity extends Activity {
     /** 웹앱(JS)에서 window.TodoAndroid.xxx() 로 호출 */
     static class Bridge {
         private final Context ctx;
-        Bridge(Context c) { ctx = c.getApplicationContext(); }
+        private final Activity act;
+        Bridge(Context c, Activity a) { ctx = c.getApplicationContext(); act = a; }
+
+        /** 위젯에서 체크했지만 아직 앱에 전달 안 된 할일 → 앱이 받아서 저장 */
+        @JavascriptInterface
+        public String takePendingDone() { return TodoWidget.takePending(ctx); }
+
+        @JavascriptInterface
+        public String widgetStatus() { return TodoWidget.status(ctx); }
+
+        /** 앱 테마(흰색/검정)에 맞춰 상단·하단 바 색 변경 */
+        @JavascriptInterface
+        public void setTheme(boolean dark) {
+            act.runOnUiThread(() -> {
+                android.view.Window w = act.getWindow();
+                int bg = dark ? 0xFF000000 : 0xFFFFFFFF;
+                w.setStatusBarColor(bg);
+                w.setNavigationBarColor(bg);
+                View d = w.getDecorView();
+                int f = d.getSystemUiVisibility();
+                int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                d.setSystemUiVisibility(dark ? (f & ~light) : (f | light));
+                d.setBackgroundColor(bg);
+            });
+        }
 
         @JavascriptInterface
         public void updateWidget(String json) { TodoWidget.save(ctx, json); }

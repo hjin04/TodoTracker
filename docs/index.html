@@ -4,20 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>나의 할일</title>
-<meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111214" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFFFF" id="themeMeta">
+<script>
+  /* 화면 테마를 그리기 전에 적용 (깜빡임 방지) */
+  try { var th = localStorage.getItem('todo.theme'); if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th; } catch (e) {}
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 :root{
-  --bg:#F6F7F9; --card:#FFFFFF; --text:#1B1D22; --sub:#8A8F98; --line:#E9EBEF; --soft:#F1F2F5;
-  --accent:#3D6BF2; --danger:#E5484D; --ok:#22B07D; --warn:#F59E0B;
+  --bg:#FFFFFF; --card:#F5F5F5; --text:#111111; --sub:#8A8A8A; --line:#E7E7E7; --soft:#EDEDED; --sheet:#FFFFFF;
+  --accent:#3D6BF2; --danger:#E5484D; --ok:#22B07D; --warn:#F59E0B; color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#111214; --card:#1B1D21; --text:#ECEDEF; --sub:#8E939C; --line:#2C2F36; --soft:#24272D; --accent:#6E8EFF; }
+  :root:not([data-theme="light"]){ --bg:#000000; --card:#121212; --text:#F2F2F2; --sub:#8C8C8C; --line:#262626; --soft:#2A2A2A; --sheet:#161616; --accent:#6E8EFF; color-scheme:dark; }
 }
+:root[data-theme="dark"]{ --bg:#000000; --card:#121212; --text:#F2F2F2; --sub:#8C8C8C; --line:#262626; --soft:#2A2A2A; --sheet:#161616; --accent:#6E8EFF; color-scheme:dark; }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);
   font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;font-size:15px;line-height:1.4}
@@ -27,9 +31,9 @@ input,select,textarea{font:inherit;color:inherit}
 .hidden{display:none!important}
 
 #app{max-width:1100px;margin:0 auto;padding:10px 16px 90px}
-header{display:flex;align-items:center;gap:4px;padding:4px 0 10px}
-.ym{font-size:20px;font-weight:800;display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:10px}
-.ym small{font-size:12px;color:var(--sub);font-weight:600}
+header{display:flex;align-items:center;gap:2px;padding:4px 0 10px;white-space:nowrap}
+.ym{font-size:18px;font-weight:800;display:flex;align-items:center;gap:5px;padding:4px 4px;border-radius:10px;white-space:nowrap;min-width:0}
+.ym small{font-size:11px;color:var(--sub);font-weight:600}
 .sync{width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:2px}
 .sync.saving{background:var(--warn);animation:pulse 1s infinite}
 .sync.error{background:var(--danger)}
@@ -37,7 +41,8 @@ header{display:flex;align-items:center;gap:4px;padding:4px 0 10px}
 .sp{flex:1}
 .icon-btn{min-width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:18px;padding:0 6px}
 .icon-btn:hover{background:var(--soft)}
-.icon-btn.txt{font-size:13px;font-weight:700;padding:0 10px;background:var(--soft)}
+.icon-btn.txt{font-size:13px;font-weight:700;padding:0 10px;background:var(--soft);white-space:nowrap}
+@media (max-width:360px){ .ym{font-size:16px} .icon-btn{min-width:32px} }
 .icon-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 .layout{display:grid;gap:14px}
@@ -47,15 +52,21 @@ header{display:flex;align-items:center;gap:4px;padding:4px 0 10px}
 .wk span{font-size:12px;color:var(--sub);padding:4px 0 2px}
 .wk .sun{color:var(--danger)} .wk .sat{color:var(--accent)}
 .cell{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0 6px;border-radius:12px}
-.cell .b{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--sub);background:var(--soft)}
-.cell .b.all{background:var(--accent);color:#fff}
-.cell .b.all svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:3}
+.cell .b{position:relative;width:28px;height:28px;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--sub)}
+.cell .b i{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--q,var(--soft))}
+.cell .b i:nth-child(1){left:0;top:0} .cell .b i:nth-child(2){right:0;top:0} .cell .b i:nth-child(3){left:0;bottom:0} .cell .b i:nth-child(4){right:0;bottom:0}
+.cell .b i.f{opacity:.88}
+.cell .b.g{border-radius:10px;background:var(--soft)}
+.cell .b span{position:relative;z-index:1;line-height:1}
+.cell .b.colored span{color:#fff;text-shadow:0 0 3px rgba(0,0,0,.35)}
+.cell .b svg{position:relative;z-index:1;width:15px;height:15px;stroke:#fff;fill:none;stroke-width:3;filter:drop-shadow(0 0 1px rgba(0,0,0,.35))}
 .cell .n{font-size:12px;min-width:22px;height:18px;line-height:18px;border-radius:9px;padding:0 4px}
 .cell.out{opacity:.35}
 .cell.today .n{background:var(--text);color:var(--card);font-weight:800}
 .cell.sel{background:color-mix(in srgb,var(--accent) 13%,transparent)}
 
-.dayhead{display:flex;align-items:baseline;gap:8px;margin:4px 4px 12px}
+.dayhead{display:flex;align-items:baseline;gap:4px 8px;margin:4px 4px 12px;flex-wrap:wrap}
+.dayhead .dt,.dayhead .pr,.dayhead .carry{white-space:nowrap}
 .dayhead .dt{font-size:18px;font-weight:800}
 .dayhead .pr{color:var(--sub);font-size:13px;font-weight:600}
 .dayhead .carry{margin-left:auto;align-self:center}
@@ -94,7 +105,7 @@ header{display:flex;align-items:center;gap:4px;padding:4px 0 10px}
 /* bottom sheet */
 .overlay{position:fixed;inset:0;z-index:50}
 .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.38)}
-.sheet{position:absolute;left:0;right:0;bottom:0;max-height:92vh;overflow:auto;background:var(--card);
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:92vh;overflow:auto;background:var(--sheet);
   border-radius:22px 22px 0 0;padding:14px 18px calc(22px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;animation:up .18s ease-out}
 @media(min-width:700px){.sheet{bottom:auto;top:6vh;border-radius:22px;max-height:88vh}}
 @keyframes up{from{transform:translateY(30px);opacity:.4}}
@@ -127,9 +138,12 @@ textarea{width:100%;min-height:70px;margin-top:12px;background:var(--soft);borde
 .sw{appearance:none;-webkit-appearance:none;width:46px;height:28px;border-radius:14px;background:var(--line);position:relative;transition:.2s;flex:none;cursor:pointer;margin:0}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .sw:checked{background:var(--accent)} .sw:checked::after{left:21px}
-.swatches{display:flex;flex-wrap:wrap;gap:10px}
-.swc{width:32px;height:32px;border-radius:50%;background:var(--c)}
-.swc.on{box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--c)}
+.swatches{display:grid;grid-template-columns:repeat(10,1fr);gap:8px;max-height:300px;overflow:auto;padding:6px 4px}
+.swc{width:100%;aspect-ratio:1;border-radius:50%;background:var(--c)}
+.swc.on{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px var(--c)}
+.custom-color{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:14px;color:var(--sub)}
+.custom-color input{width:44px;height:32px;border:0;padding:0;background:none}
+.preview-chip{margin-left:auto}
 
 /* settings page */
 .page{position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:40}
@@ -200,7 +214,18 @@ textarea{width:100%;min-height:70px;margin-top:12px;background:var(--soft);borde
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const WD = ['일','월','화','수','목','금','토'];
-const PALETTE = ['#4C7CF3','#F25F5C','#8B5CF6','#22B07D','#F59E0B','#8E8E93','#EC4899','#14B8A6','#0EA5E9','#84CC16','#B45309','#475569'];
+/* 색상표: 색상 14가지 × 톤 5단계(파스텔→진한색) + 무채색·브라운 */
+const PALETTE = (() => {
+  const hsl = (h, s, l) => { s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+    const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)))).toString(16).padStart(2, '0');
+    return ('#' + f(0) + f(8) + f(4)).toUpperCase(); };
+  const tones = [[75, 84], [72, 72], [78, 60], [62, 47], [55, 33]];
+  const hues = [350, 8, 22, 36, 48, 75, 120, 160, 180, 198, 215, 235, 262, 290];
+  const out = [];
+  hues.forEach(h => tones.forEach(([sat, l]) => out.push(hsl(h, sat, l))));
+  return out.concat(['#E8D5C4', '#C8A27C', '#9C7A54', '#6B4E37', '#3E2C20', '#D9D9D9', '#A6A6A6', '#737373', '#4A4A4A', '#1F1F1F']);
+})();
+const DEFAULT_COLORS = ['#4C7CF3','#F25F5C','#8B5CF6','#22B07D','#F59E0B','#8E8E93','#EC4899','#14B8A6'];
 const ALARMS = [['','없음'],['0','정시'],['5','5분 전'],['10','10분 전'],['30','30분 전'],['60','1시간 전'],['180','3시간 전'],['1440','하루 전']];
 const CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const pad = n => (n < 10 ? '0' : '') + n;
@@ -236,6 +261,15 @@ const store = {
 /* ───────── 상태 ───────── */
 const S = { prefs:{ autoCarry:false }, cats:{}, routines:{}, tasks:{}, today: localToday(), sel:null, ym:null, adding:null, week: store.get('weekMode') === '1', settings:null, syncErr:false };
 S.sel = S.today; S.ym = S.today.slice(0, 7);
+S.look = { theme: store.get('todo.theme') || 'system', badge: store.get('todo.badge') || 'clover' };
+function applyTheme(){
+  const t = S.look.theme;
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  $('#themeMeta').setAttribute('content', dark ? '#000000' : '#FFFFFF');
+  if (window.TodoAndroid && window.TodoAndroid.setTheme) try { window.TodoAndroid.setTheme(dark); } catch (e) {}
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 const byId = arr => Object.fromEntries((arr || []).map(o => [o.id, o]));
 const sortedCats = () => Object.values(S.cats).filter(c => !c.deleted).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
 const cmpTask = (a, b) => (a.time || '~').localeCompare(b.time || '~') || ((a.createdAt || 0) - (b.createdAt || 0));
@@ -393,12 +427,32 @@ function renderCal(idx){
   let h = '<div class="wk">' + WD.map((w, i) => `<span class="${i === 0 ? 'sun' : i === 6 ? 'sat' : ''}">${w}</span>`).join('') + '</div><div class="grid">';
   for (let i = 0; i < cells; i++){
     const d = addDays(start, i), list = idx[d] || [], left = list.filter(t => !t.done).length;
-    const badge = !list.length ? '<span class="b"></span>' : left ? `<span class="b">${left}</span>` : `<span class="b all">${CHECK}</span>`;
+    const badge = dayBadge(list, left);
     const cls = ['cell', !S.week && d.slice(0, 7) !== S.ym ? 'out' : '', d === S.sel ? 'sel' : '', d === S.today ? 'today' : ''].join(' ');
     h += `<button class="${cls}" data-date="${d}">${badge}<span class="n">${Number(d.slice(8))}</span></button>`;
   }
   $('#cal').innerHTML = h + '</div>';
 }
+/* 달력 날짜 표시: 완료한 할일의 카테고리 색으로 채움 (완료한 순서대로, 최근 4개) */
+function dayBadge(list, left){
+  const done = list.filter(t => t.done).sort((a, b) => (a.doneAt || a.createdAt || 0) - (b.doneAt || b.createdAt || 0));
+  const colors = done.slice(-4).map(t => S.cats[t.categoryId].color);
+  const label = !list.length ? '' : left ? `<span>${left}</span>` : CHECK;
+  const colored = colors.length ? ' colored' : '';
+  if (S.look.badge === 'gradient'){
+    let bg = '';
+    if (colors.length === 1) bg = colors[0];
+    else if (colors.length > 1){
+      const pos = ['20% 20%', '85% 25%', '25% 85%', '85% 85%'];
+      bg = colors.map((c, i) => `radial-gradient(circle at ${pos[i]}, ${c} 0%, ${c}00 75%)`).join(',') + ',' + colors[colors.length - 1];
+    }
+    const op = colors.length && left ? ';opacity:.75' : '';
+    return `<span class="b g${colored}" style="${bg ? 'background:' + bg : ''}${op}">${label}</span>`;
+  }
+  const q = [0, 1, 2, 3].map(i => colors[i] ? `<i class="f" style="--q:${colors[i]}"></i>` : '<i></i>').join('');
+  return `<span class="b${colored}">${q}${label}</span>`;
+}
+
 function metaHtml(t){
   const m = [];
   if (t.time) m.push(`<span>${t.time}${t.endTime ? '–' + t.endTime : ''}</span>`);
@@ -448,7 +502,7 @@ document.addEventListener('click', e => {
   if (!el || el.closest('#overlay,#dialog,#settings')) return;
   const ds = el.dataset;
   if (ds.date){ S.sel = ds.date; if (ds.date.slice(0, 7) !== S.ym){ S.ym = ds.date.slice(0, 7); render(); refresh(); } else render(); return; }
-  if (ds.chk){ const t = S.tasks[ds.chk]; saveTask({ ...t, done: !t.done }); return; }
+  if (ds.chk){ const t = S.tasks[ds.chk]; saveTask({ ...t, done: !t.done, doneAt: t.done ? 0 : Date.now() }); return; }
   if (ds.edit){ openTaskEditor(ds.edit); return; }
   if (ds.addr){ addFromRoutine(ds.addr); return; }
   if (ds.carry){ openCarrySheet(); return; }
@@ -542,7 +596,7 @@ const catChips = sel => sortedCats().map(c => `<button class="opt ${c.id === sel
 function pickOne(container, btn){ container.querySelectorAll('.on').forEach(x => x.classList.remove('on')); btn.classList.add('on'); }
 function alarmHint(){
   const h = $('#e_ahint'); if (!h) return;
-  h.textContent = !$('#e_time').value && $('#e_alarm').value !== '' ? '⚠ 시간을 정해야 알림이 울려요' : '';
+  h.textContent = !$('#e_time').value && $('#e_alarm').value !== '' ? '시간이 없으면 오전 8시 기준으로 알려요' : '';
 }
 
 /* ───────── 할일 편집 ───────── */
@@ -628,6 +682,13 @@ function renderSettings(){
       ${apk ? `<div class="li" style="padding:14px"><div class="li-main"><span>🤖 안드로이드 앱 + 위젯</span><span class="s">홈 화면 위젯으로 오늘 남은 할일을 볼 수 있어요</span></div><a class="mini" style="text-decoration:none;color:inherit" href="${apk}">APK 받기</a></div>` : ''}
       <div class="li" style="padding:14px"><div class="li-main"><span>연결 해제</span><span class="s">이 기기에서만 연결을 끊어요. 데이터는 그대로예요.</span></div><button class="mini" style="color:var(--danger)" data-act="disconnect">해제</button></div>
     </div>
+    <div class="list" style="margin-bottom:14px">
+      <div class="li" style="padding:14px;flex-wrap:wrap;gap:10px"><div class="li-main"><span>🎨 화면 테마</span><span class="s">이 기기에만 적용돼요</span></div>
+        <div class="chips">${[['system','시스템'],['light','흰색'],['dark','검정']].map(([k, l]) => `<button class="opt ${S.look.theme === k ? 'on' : ''}" data-theme-set="${k}">${l}</button>`).join('')}</div></div>
+      <div class="li" style="padding:14px;flex-wrap:wrap;gap:10px"><div class="li-main"><span>🍀 달력 완료 표시</span><span class="s">완료한 할일의 카테고리 색으로 날짜가 채워져요</span></div>
+        <div class="chips">${[['clover','4분할'],['gradient','그라데이션']].map(([k, l]) => `<button class="opt ${S.look.badge === k ? 'on' : ''}" data-badge-set="${k}">${l}</button>`).join('')}</div></div>
+      ${IS_APP && window.TodoAndroid.widgetStatus ? `<div class="li" style="padding:14px"><div class="li-main"><span>🧩 위젯 상태</span><span class="s" id="wStatus">${esc(window.TodoAndroid.widgetStatus())}</span></div></div>` : ''}
+    </div>
     <div class="list" style="margin-bottom:14px"><div class="li" style="padding:14px"><div class="li-main"><span>못 한 일 자동으로 넘기기</span>
       <span class="s">매일 자정, 지난 7일 동안 완료 못 한 할일을 오늘로 옮겨요 (루틴 할일은 제외)</span></div>
       <input type="checkbox" class="sw" id="p_carry" ${S.prefs && S.prefs.autoCarry ? 'checked' : ''}></div></div>
@@ -635,7 +696,7 @@ function renderSettings(){
       <h4>↪ 할일 넘기기</h4><p>날짜 제목 옆 [미완료 N개 넘기기]를 누르면 못 한 할일을 골라 내일, 오늘 또는 원하는 날짜로 한 번에 옮길 수 있어요. 하나만 옮길 때는 할일을 눌러 [내일 하기] 또는 [다른 날로]를 쓰세요. 옮겨진 할일에는 "↪ 원래 날짜"가 표시돼요.</p>
       <h4>🔄 동기화</h4><p>모든 데이터는 내 구글 드라이브의 "나의 할일 데이터" 시트에 저장돼요. 폰·PC·안드로이드 앱이 같은 서버에 연결되어 자동으로 맞춰지고, 다른 기기에서 바꾼 내용은 20초 안에(또는 앱으로 돌아올 때) 반영돼요. 제목 옆 점이 초록색이면 저장 완료, 주황색이면 저장 중이에요.</p>
       <h4>🔔 시간 알림</h4><p>할일에 시간과 알림을 정하면 구글캘린더의 "할일 알림" 캘린더에 일정이 생기고, 휴대폰 캘린더 앱이 그 시간에 알림을 보내 줘요. 완료 체크하면 알림 일정은 자동으로 지워져요.</p>
-      <h4>📅 구글캘린더 연동</h4><p>카테고리 설정에서 "구글캘린더 연동"을 켠 카테고리(기본: 외출)의 할일은 내 기본 구글캘린더에 일정으로 등록·수정·삭제돼요. 시간이 없으면 종일 일정으로 들어가요.</p>
+      <h4>📅 구글캘린더 연동</h4><p>카테고리 설정에서 "구글캘린더 연동"을 켠 카테고리(기본: 외출)의 할일은 내 기본 구글캘린더에 일정으로 등록·수정·삭제돼요. 시간이 없으면 오전 8시~9시 일정으로 들어가요.</p>
       <h4>↻ 루틴</h4><p>"자동 추가"를 켜면 매일 자정에 앞으로 7일치 할일이 자동으로 생겨요. 끄면 해당 요일에 흐리게 표시되고 [추가]를 눌러 직접 넣을 수 있어요. 자동 추가된 할일을 지우면 그날은 다시 생기지 않아요.</p>
       <h4>📌 기한</h4><p>할일에 기한을 정하면 D-day가 표시돼요. 기한이 하루 이내로 남으면 빨간색으로 바뀌어요.</p></div>`;
   }
@@ -653,6 +714,8 @@ $('#settings').addEventListener('click', e => {
   const ds = b.dataset;
   if (ds.act === 'back'){ S.settings = null; $('#settings').classList.add('hidden'); render(); return; }
   if (ds.act === 'copyconn'){ copyText($('#connCode').value); return; }
+  if (ds.themeSet){ S.look.theme = ds.themeSet; store.set('todo.theme', ds.themeSet); applyTheme(); renderSettings(); return; }
+  if (ds.badgeSet){ S.look.badge = ds.badgeSet; store.set('todo.badge', ds.badgeSet); renderSettings(); render(); return; }
   if (ds.act === 'disconnect'){
     confirmBox('이 기기에서 연결을 해제할까요?\n(서버의 데이터는 지워지지 않아요)', '해제').then(ok => {
       if (!ok) return;
@@ -677,19 +740,24 @@ $('#settings').addEventListener('click', e => {
 function openCatEditor(id){
   const isNew = !id;
   const used = new Set(sortedCats().map(c => c.color));
-  const c = isNew ? { id: uid(), name: '', color: PALETTE.find(p => !used.has(p)) || PALETTE[0], gcal: false, order: sortedCats().length }
+  const c = isNew ? { id: uid(), name: '', color: DEFAULT_COLORS.find(p => !used.has(p)) || PALETTE[Math.floor(Math.random() * PALETTE.length)], gcal: false, order: sortedCats().length }
                   : { ...S.cats[id] };
   openSheet(`
     <div class="sh-h"><button class="btn" data-act="close">닫기</button><b>${isNew ? '새 카테고리' : '카테고리 편집'}</b><button class="btn pri" data-act="save">저장</button></div>
     <input id="c_name" class="big" value="${esc(c.name)}" placeholder="카테고리 이름" maxlength="20">
     <div class="lbl">색상</div>
-    <div class="swatches" id="c_sw">${PALETTE.map(p => `<button class="swc ${p === c.color ? 'on' : ''}" style="--c:${p}" data-color="${p}" aria-label="${p}"></button>`).join('')}</div>
+    <div class="swatches" id="c_sw">${PALETTE.map(p => `<button class="swc ${p === c.color.toUpperCase() ? 'on' : ''}" style="--c:${p}" data-color="${p}" aria-label="${p}"></button>`).join('')}</div>
+    <div class="custom-color"><input type="color" id="c_custom" value="${c.color}"><span>직접 고르기</span><span class="chip preview-chip" id="c_prev" style="--c:${c.color}">${esc(c.name || '미리보기')}</span></div>
     <div class="field" style="margin-top:12px"><label class="grow" style="width:auto;color:var(--text)">📅 구글캘린더 연동</label><input type="checkbox" class="sw" id="c_gcal" ${c.gcal ? 'checked' : ''}>
       <span class="hint" style="padding-left:0">켜면 이 카테고리의 할일이 내 구글캘린더에 일정으로 등록돼요.</span></div>
     ${isNew ? '' : '<div class="acts"><button class="btn danger" data-act="del">카테고리 삭제</button></div>'}`,
-  async b => {
-    if (!b) return;
-    if (b.dataset.color){ c.color = b.dataset.color; pickOne($('#c_sw'), b); return; }
+  async (b, e) => {
+    if (!b){
+      if (e && e.target.id === 'c_custom'){ c.color = e.target.value.toUpperCase(); $('#c_sw').querySelectorAll('.on').forEach(x => x.classList.remove('on')); $('#c_prev').style.setProperty('--c', c.color); }
+      if (e && e.target.id === 'c_name') $('#c_prev').textContent = e.target.value || '미리보기';
+      return;
+    }
+    if (b.dataset.color){ c.color = b.dataset.color; pickOne($('#c_sw'), b); $('#c_custom').value = c.color; $('#c_prev').style.setProperty('--c', c.color); return; }
     switch (b.dataset.act){
       case 'close': closeSheet(); break;
       case 'save': {
@@ -807,6 +875,19 @@ $('#cn_go').addEventListener('click', async () => {
   } finally { btn.disabled = false; btn.textContent = '연결하기'; }
 });
 
+/* 위젯에서 체크한 할일을 받아와 앱에서 저장 (서버 동기화 보장) */
+function takeWidgetDone(){
+  if (!IS_APP || !window.TodoAndroid.takePendingDone) return;
+  let ids = [];
+  try { ids = JSON.parse(window.TodoAndroid.takePendingDone() || '[]'); } catch (e) {}
+  ids.forEach(item => {
+    const id = item.id || item, at = item.at || Date.now(), t = S.tasks[id];
+    if (t){ if (!t.done) saveTask({ ...t, done: true, doneAt: at }); }
+    else enqueue(id, () => api('complete', id));
+  });
+}
+function onAppResume(){ takeWidgetDone(); refresh(); }
+
 /* ───────── 시작 ───────── */
 function start(){
   if (!CONN){ showConnect(); return; }
@@ -814,15 +895,16 @@ function start(){
     const c = JSON.parse(store.get(CACHE_KEY) || 'null');
     if (c){ S.cats = byId(c.cats); S.routines = byId(c.routines); S.tasks = byId(c.tasks); if (c.prefs) S.prefs = c.prefs; }
   } catch (e) {}
-  render(); refresh();
+  render(); takeWidgetDone(); refresh();
   if (IS_APP) try { window.TodoAndroid.setConnection(CONN.url, CONN.token); } catch (e) {}
 }
+applyTheme();
 setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 20000);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   const t = localToday();
   if (t !== S.today){ if (S.sel === S.today) S.sel = t; S.today = t; S.ym = S.sel.slice(0, 7); render(); }
-  refresh();
+  takeWidgetDone(); refresh();
 });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 start();

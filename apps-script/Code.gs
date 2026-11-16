@@ -140,6 +140,7 @@ function complete(id) {
     var t = getObj_('tasks', id);
     if (t && !t.deleted && !t.done) {
       t.done = true;
+      t.doneAt = Date.now();
       syncCalendar_(t);
       writeObj_('tasks', t);
     }
@@ -377,10 +378,10 @@ function syncCalendar_(t, cat) {
     if (cat === undefined) cat = t.categoryId ? getObj_('categories', t.categoryId) : null;
     var alive = !t.deleted && cat && !cat.deleted && t.date;
     var useG = !!(alive && cat.gcal);
-    var useA = !!(alive && !useG && !t.done && t.time && hasVal_(t.alarm));
+    var useA = !!(alive && !useG && !t.done && hasVal_(t.alarm));
     var main = CalendarApp.getDefaultCalendar();
 
-    if (useG) t.gcalId = putEvent_(main, t.gcalId, t, (t.done || !t.time) ? null : t.alarm, '', 60);
+    if (useG) t.gcalId = putEvent_(main, t.gcalId, t, t.done ? null : t.alarm, '', 60);
     else if (t.gcalId) { dropEvent_(main, t.gcalId); t.gcalId = ''; }
 
     if (useA) t.alarmId = putEvent_(alarmCal_(), t.alarmId, t, t.alarm, '[' + cat.name + '] ', 30);
@@ -414,9 +415,10 @@ function dropEvent_(cal, id) {
   try { var ev = cal.getEventById(id); if (ev) ev.deleteEvent(); } catch (e) { /* 이미 지워진 일정 */ }
 }
 
+/** 시간이 없으면 오전 8시~9시 (삼성 캘린더 기본값과 같게) */
 function eventTimes_(t, defMin) {
   var p = t.date.split('-').map(Number);
-  if (!t.time) return { allDay: true, start: new Date(p[0], p[1] - 1, p[2]) };
+  if (!t.time) return { allDay: false, start: new Date(p[0], p[1] - 1, p[2], 8, 0), end: new Date(p[0], p[1] - 1, p[2], 9, 0) };
   var a = t.time.split(':').map(Number);
   var start = new Date(p[0], p[1] - 1, p[2], a[0], a[1]);
   var end;
