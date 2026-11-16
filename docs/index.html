@@ -95,7 +95,8 @@ header{display:flex;align-items:center;gap:2px;padding:4px 0 10px;white-space:no
 .meta{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:2px;font-size:12px;color:var(--sub)}
 .dday{padding:0 6px;border-radius:6px;background:var(--soft);font-weight:800}
 .dday.urgent{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
-.sugg{opacity:.6}
+.sugg{opacity:.6;cursor:pointer}
+.sugg:active{opacity:.9}
 .sugg .rt{flex:none;width:22px;height:22px;border-radius:7px;border:2px dashed color-mix(in srgb,var(--c) 70%,transparent);
   display:grid;place-items:center;font-size:12px;color:var(--c)}
 #fab{position:fixed;right:max(18px,calc(50vw - 532px));bottom:calc(22px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:18px;
@@ -527,7 +528,7 @@ function renderDay(idx){
         <div class="body" data-edit="${t.id}"><div class="title">${esc(t.title)}</div>${metaHtml(t)}</div></div>`;
     }
     for (const r of sugg){
-      h += `<div class="task sugg" style="--c:${ink(c.color)}"><span class="rt">↻</span><div class="body"><div class="title">${esc(r.title)}</div>${r.time ? `<div class="meta"><span>${r.time}</span></div>` : ''}</div><button class="mini" data-addr="${r.id}">추가</button></div>`;
+      h += `<div class="task sugg" style="--c:${ink(c.color)}" data-addr="${r.id}" role="button" title="눌러서 추가"><span class="rt">↻</span><div class="body"><div class="title">${esc(r.title)}</div>${r.time ? `<div class="meta"><span>${r.time}</span></div>` : ''}</div><button class="mini" data-addr="${r.id}">추가</button></div>`;
     }
     if (S.adding === c.id){
       h += `<div class="task adding" style="--c:${ink(c.color)}"><span class="chk"></span><form id="newForm"><input id="newInput" placeholder="할일 입력 후 Enter" enterkeyhint="done" autocomplete="off"></form></div>`;
@@ -541,7 +542,7 @@ function renderDay(idx){
 
 /* ───────── 메인 화면 이벤트 ───────── */
 document.addEventListener('click', e => {
-  const el = e.target.closest('button,[data-edit]');
+  const el = e.target.closest('button,[data-edit],[data-addr]');
   if (!el || el.closest('#overlay,#dialog,#settings')) return;
   const ds = el.dataset;
   if (ds.date){ S.sel = ds.date; if (ds.date.slice(0, 7) !== S.ym){ S.ym = ds.date.slice(0, 7); render(); refresh(); } else render(); return; }
