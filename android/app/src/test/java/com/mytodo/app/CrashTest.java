@@ -37,12 +37,14 @@ public class CrashTest {
         b.updateWidget("garbage");
         b.widgetStatus(); b.takePendingDone(); b.getReminderPrefs();
         b.setReminderPrefs("{\"enabled\":true,\"offset\":10,\"due\":\"both\",\"morning\":true}");
-        b.setUpcoming(BAD);
         b.setUpcoming("not json");
         b.setReminderPrefs("garbage");
+        b.setUpcoming(BAD);
         b.setTheme(true); b.setTheme(false); b.copy("x"); b.errorReport();
         shadowOf(android.os.Looper.getMainLooper()).idle();
-        assertTrue("good items must still be scheduled", Reminders.compute(a).size() >= 3);
+        int n = Reminders.compute(a).size();
+        assertTrue("good items must still be scheduled: " + n, n >= 5);
+        assertEquals(n, Reminders.prefs(a).getInt("count", 0));
     }
 
     @Test public void afterUpdateWithBadStoredData() {
