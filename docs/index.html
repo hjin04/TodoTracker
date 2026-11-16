@@ -687,7 +687,10 @@ function openTaskEditor(id){
 /* ───────── 설정 ───────── */
 function openSettings(tab){ S.settings = tab || S.settings || 'cats'; $('#settings').classList.remove('hidden'); renderSettings(); }
 function rtSummary(r){
-  const days = (r.days || []).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => WD[d]).join('·');
+  const ord = (r.days || []).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+  const consecutive = ord.length >= 3 && ord.every((d, i) => i === 0 || (ord[i - 1] + 1) % 7 === d);
+  const days = ord.length === 5 && consecutive && ord[0] === 1 ? '월~금' : ord.length === 2 && ord.includes(0) && ord.includes(6) ? '토·일'
+    : consecutive ? WD[ord[0]] + '~' + WD[ord[ord.length - 1]] : ord.map(d => WD[d]).join('·');
   let s = r.repeat === 'daily' ? '매일' : r.repeat === 'weekly' ? '매주 ' + days : r.repeat === 'monthly' ? `매월 ${r.monthDay}일` : `${r.every}일마다`;
   if (r.time) s += ' · ' + r.time;
   if (r.time && hasVal(r.alarm)) s += ' 🔔';
@@ -757,7 +760,7 @@ function renderSettings(){
       <div class="info">
       <h4>↪ 할일 넘기기</h4><p>날짜 제목 옆 [미완료 N개 넘기기]를 누르면 못 한 할일을 골라 내일, 오늘 또는 원하는 날짜로 한 번에 옮길 수 있어요. 하나만 옮길 때는 할일을 눌러 [내일 하기] 또는 [다른 날로]를 쓰세요. 옮겨진 할일에는 "↪ 원래 날짜"가 표시돼요.</p>
       <h4>🔄 동기화</h4><p>모든 데이터는 내 구글 드라이브의 "TodoTracker 데이터" 시트 (예전에 만든 경우 "나의 할일 데이터")에 저장돼요. 폰·PC·안드로이드 앱이 같은 서버에 연결되어 자동으로 맞춰지고, 다른 기기에서 바꾼 내용은 20초 안에(또는 앱으로 돌아올 때) 반영돼요. 제목 옆 점이 초록색이면 저장 완료, 주황색이면 저장 중이에요.</p>
-      <h4>✏️ 빠르게 추가</h4><p>오른쪽 아래 ＋ 버튼을 누르고 "내일 오후 3시 치과", "금요일까지 레포트 제출"처럼 말하듯 적으면 날짜·시간·기한·카테고리를 알아서 채워요. 한 줄에 하나씩 여러 개를 한 번에 넣을 수 있고, 저장 전에 카테고리를 바꿀 수 있어요. "#카테고리"로 직접 정할 수도 있어요.</p>
+      <h4>✏️ 빠르게 추가</h4><p>오른쪽 아래 ＋ 버튼을 누르고 "내일 오후 3시 치과", "금요일까지 레포트 제출"처럼 말하듯 적으면 날짜·시간·기한·카테고리를 알아서 채워요. "매주 월~금 오전 8시 학원 11월만", "매일 듀오링고", "화목 7시 운동 2주 동안"처럼 반복을 적으면 루틴(반복 일정)으로 만들어요. 한 줄에 하나씩 여러 개를 한 번에 넣을 수 있고, 저장 전에 카테고리를 바꿀 수 있어요. "#카테고리"로 직접 정할 수도 있어요.</p>
       <h4>🔔 시간 알림</h4><p>기본은 구글캘린더 "할일 알림" 캘린더로 알려요. 안드로이드 앱에서 "잠금화면 알림"을 켜면 앱이 직접 알려 주고, 알림에서 바로 완료할 수도 있어요.</p>
       <h4>📅 구글캘린더 연동</h4><p>카테고리 설정에서 "구글캘린더 연동"을 켠 카테고리(기본: 외출)의 할일은 내 기본 구글캘린더에 일정으로 등록·수정·삭제돼요. 시간이 없으면 오전 8시~9시 일정으로 들어가요.</p>
       <h4>↻ 루틴</h4><p>"자동 추가"를 켜면 매일 자정에 앞으로 7일치 할일이 자동으로 생겨요. 끄면 해당 요일에 흐리게 표시되고 [추가]를 눌러 직접 넣을 수 있어요. 자동 추가된 할일을 지우면 그날은 다시 생기지 않아요.</p>
@@ -923,7 +926,7 @@ function openRoutineEditor(id){
 /* ───────── 빠른 추가: 말하듯 쓰면 날짜·시간·카테고리를 알아서 ───────── */
 const KEYWORDS = {
   '과제': ['과제','레포트','리포트','보고서','제출','에세이','발표','팀플','숙제','ppt','피피티','과제물'],
-  '공부': ['공부','복습','예습','단어','토익','토플','아이엘츠','ielts','인강','문제','풀기','듀오링고','암기','독서','책 읽기','리딩','리스닝','라이팅','스피킹'],
+  '공부': ['공부','학원','과외','스터디','복습','예습','단어','토익','토플','아이엘츠','ielts','인강','문제','풀기','듀오링고','암기','독서','책 읽기','리딩','리스닝','라이팅','스피킹'],
   '학교생활': ['수업','강의','상담','교수','학교','동아리','학과','시험','중간고사','기말','등록','수강','휴학','학생회','개강','종강','대면'],
   '자기관리': ['운동','헬스','필라테스','요가','영양제','청소','빨래','일기','스트레칭','산책','피부','러닝','명상','다이어트','물 마시기','약 먹기','폼롤러','샤워'],
   '외출': ['약속','만남','만나','병원','치과','미용실','카페','영화','여행','정신과','진료','예약','모임','데이트','식사','저녁약속','점심약속','출국','비행기','공항','면접'],
@@ -954,6 +957,49 @@ function guessCategory(text){
   let best = null; cats.forEach(c => { if (score[c.id] > 0 && (!best || score[c.id] > score[best.id])) best = c; });
   return best || cats.find(c => c.name === '그외') || cats[cats.length - 1];
 }
+const WDCH = '월화수목금토일';
+function expandDays(a, b){ const out = []; let i = WDK[a]; for (let k = 0; k < 7; k++){ out.push(i); if (i === WDK[b]) break; i = (i + 1) % 7; } return out; }
+/* 반복 규칙과 기간을 찾아 잘라내고 { repeat, days, monthDay, every, start, end } 를 돌려줌 */
+function parseRecur(cut, set, get){
+  const W = '[월화수목금토일]';
+  const WD1 = W + '(?=요일|마다|[\\s,/·~-]|$|' + W + ')(?:요일)?';
+  let rec = null, m;
+  if (cut(/(매일|날마다|하루도\s*빠짐없이)/)) rec = { repeat: 'daily' };
+  else if ((m = cut(/(매주\s*)?(평일|주중)(마다)?/))) rec = { repeat: 'weekly', days: [1, 2, 3, 4, 5] };
+  else if ((m = cut(/(매주\s*)?주말(마다)?/))) rec = { repeat: 'weekly', days: [0, 6] };
+  else if ((m = cut(new RegExp('(매주\\s*)?(' + W + ')(?:요일)?\\s*(?:~|-|부터)\\s*(' + W + ')(?:요일)?(\\s*까지)?(\\s*마다)?')))) rec = { repeat: 'weekly', days: expandDays(m[2], m[3]) };
+  else if ((m = cut(new RegExp('매주\\s*((?:' + WD1 + '\\s*[,/·]?\\s*)+)(마다)?')))) rec = { repeat: 'weekly', days: [...new Set(m[1].replace(/요일/g, '').split('').filter(ch => WDCH.includes(ch)).map(ch => WDK[ch]))] };
+  else if ((m = cut(new RegExp('((?:' + WD1 + '\\s*[,/·]?\\s*)+)마다')))) rec = { repeat: 'weekly', days: [...new Set(m[1].replace(/요일/g, '').split('').filter(ch => WDCH.includes(ch)).map(ch => WDK[ch]))] };
+  else if ((m = get().match(/(?<=\s)([월화수목금토일]{2,7})(?=\s)/)) && new Set(m[1]).size === m[1].length && cut(new RegExp('(?<=\\s)' + m[1] + '(?=\\s)'))) rec = { repeat: 'weekly', days: m[1].split('').map(ch => WDK[ch]) };
+  else if ((m = cut(/(매월|매달)\s*(\d{1,2})\s*일/))) rec = { repeat: 'monthly', monthDay: +m[2] };
+  else if ((m = cut(/(\d+)\s*일\s*마다/))) rec = { repeat: 'interval', every: Math.max(1, +m[1]) };
+  else if (cut(/격일/)) rec = { repeat: 'interval', every: 2 };
+  if (!rec || (rec.days && !rec.days.length)) return null;
+  // 기간
+  let start = S.today, end = '';
+  const lastOf = (y, mo) => ymd(y, mo, dim(y, mo));
+  const monthYear = mo => { const y = +S.today.slice(0, 4); return mo < +S.today.slice(5, 7) - 1 ? y + 1 : y; };
+  const D = '(?:(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일|(\\d{1,2})[/.](\\d{1,2})|(오늘|내일|모레)|(다음\\s*주|담주))';
+  const toDate = x => x[1] ? nearestMD(+x[1], +x[2]) : x[3] ? nearestMD(+x[3], +x[4]) : x[5] ? addDays(S.today, { 오늘: 0, 내일: 1, 모레: 2 }[x[5]])
+    : addDays(S.today, 7 - ((dow(S.today) + 6) % 7));
+  if ((m = cut(/(\d{1,2})\s*월\s*(?:만|한\s*달(?:\s*(?:동안|간))?|동안|내내|중|에만)/))){
+    const mo = +m[1], y = monthYear(mo); const first = ymd(y, mo, 1); start = first > S.today ? first : S.today; end = lastOf(y, mo);
+  } else if ((m = cut(/(이번|다음)\s*달\s*(?:만|동안|내내|까지)?/))){
+    let [y, mo] = P(S.today); if (m[1] === '다음'){ mo++; if (mo > 12){ mo = 1; y++; } } const first = ymd(y, mo, 1);
+    start = first > S.today ? first : S.today; end = lastOf(y, mo);
+  } else {
+    if ((m = cut(new RegExp(D + '\\s*부터')))) start = toDate(m);
+    else if ((m = cut(/(\d{1,2})\s*월\s*부터/))){ const mo = +m[1], first = ymd(monthYear(mo), mo, 1); start = first > S.today ? first : S.today; }
+    if ((m = cut(new RegExp('(?:~\\s*)?' + D + '\\s*까지'))) || (m = cut(new RegExp('~\\s*' + D)))) end = toDate(m);
+    else if ((m = cut(/(\d{1,2})\s*월\s*(?:말\s*)?까지/))) end = lastOf(monthYear(+m[1]), +m[1]);
+    else if ((m = cut(/(\d+)\s*(주|일|개월|달)\s*(?:동안|간)/))){
+      const n = +m[1]; if (m[2] === '주') end = addDays(start, 7 * n - 1); else if (m[2] === '일') end = addDays(start, n - 1);
+      else { let [y, mo, d] = P(start); mo += n; while (mo > 12){ mo -= 12; y++; } end = addDays(ymd(y, mo, Math.min(d, dim(y, mo))), -1); }
+    }
+  }
+  if (end && end < start) end = '';
+  return Object.assign({ days: [], monthDay: Number(start.slice(8)), every: 2 }, rec, { start, end });
+}
 function parseQuick(raw){
   let s = ' ' + raw.trim().replace(/\s+/g, ' ') + ' ';
   const r = { title: '', date: '', time: '', endTime: '', due: '', alarm: '', categoryId: '' };
@@ -964,6 +1010,9 @@ function parseQuick(raw){
   if ((m = cut(/(\d+)\s*(분|시간)\s*전(에)?\s*(알림|알려\S*)/))) r.alarm = String(m[2] === '시간' ? m[1] * 60 : +m[1]);
   else if (cut(/하루\s*전(에)?\s*(알림|알려\S*)/)) r.alarm = '1440';
   else if (cut(/\s(알림|알려\S*)(?=\s)/)) r.alarm = '0';
+  // 반복 일정 (매일, 매주 월~금, 월수금, 매월 15일, 3일마다 …) + 기간 (11월만, ~부터, ~까지, 2주 동안)
+  const rec = parseRecur(cut, s0 => s = s0, () => s);
+  if (rec) Object.assign(r, rec);
   // 날짜 (뒤에 '까지'가 붙으면 기한)
   const DATE = [
     [/(\d{4})\s*[년.\/-]\s*(\d{1,2})\s*[월.\/-]\s*(\d{1,2})\s*일?/, m => ymd(+m[1], +m[2], +m[3])],
@@ -979,11 +1028,11 @@ function parseQuick(raw){
     }],
     [/(?<![\d월])(\d{1,2})\s*일(?!\s*(뒤|후|마다|동안|간))/, m => nearestDay(+m[1])],
   ];
-  for (const [re, fn] of DATE){
+  if (!r.repeat) for (const [re, fn] of DATE){
     const mm = cut(new RegExp(re.source + '(\\s*까지)?'));
     if (mm){ const d = fn(mm); if (mm[mm.length - 1]) r.due = d; else r.date = d; break; }
   }
-  if (!r.due && (m = cut(/(이번\s*주|이번주)\s*까지/))) r.due = addDays(S.today, (7 - dow(S.today)) % 7);
+  if (!r.repeat && !r.due && (m = cut(/(이번\s*주|이번주)\s*까지/))) r.due = addDays(S.today, (7 - dow(S.today)) % 7);
   // 시간 (범위 포함)
   const T = '(오전|오후|아침|점심|낮|저녁|밤|새벽)?\\s*(\\d{1,2})(?:\\s*시(?!간)\\s*(?:(\\d{1,2})\\s*분|(반))?|:(\\d{2}))';
   m = cut(new RegExp(T + '(?:\\s*(?:부터|~|-|에서)\\s*' + T + ')?(\\s*까지)?'));
@@ -993,7 +1042,7 @@ function parseQuick(raw){
     if (m[7]) r.endTime = to24(m[6] || (/(오후|저녁|밤)/.test(ctxAP) ? '오후' : /(오전|아침|새벽)/.test(ctxAP) && +m[7] > +m[2] ? '오전' : ''), m[7], m[9] ? 30 : (m[8] || m[10]));
     if (r.endTime && r.endTime <= r.time) r.endTime = '';
   } else if (cut(/정오/)) r.time = '12:00';
-  r.title = s.replace(/\s(에|에는|까지|부터|에서|쯤|정도|에\s*있는)(?=\s)/g, ' ').replace(/\s+/g, ' ').trim().replace(/^(에|까지)\s+/, '');
+  r.title = s.replace(/[,，]/g, ' ').replace(/\s(에|에는|까지|부터|에서|쯤|정도|에\s*있는|만)(?=\s)/g, ' ').replace(/\s+/g, ' ').trim().replace(/^(에|까지)\s+/, '');
   if (!r.title) r.title = raw.trim();
   if (!r.categoryId){ const c = guessCategory(raw); r.categoryId = c ? c.id : ''; }
   if (!r.date) r.date = S.sel;
@@ -1012,6 +1061,8 @@ function openQuickAdd(){
     });
     box.innerHTML = items.length ? items.map((it, i) => { const c = S.cats[it.categoryId];
       const dl = dateLabel(it.date), meta = [`📅 ${/월/.test(dl) ? fmt(it.date) : dl + ' ' + fmt(it.date)}`];
+      if (it.repeat){ meta.length = 0; meta.push('🔁 ' + rtSummary({ ...it, autoAdd: true }).replace(/ · 자동 추가.*/, '').replace(/ · \d\d:\d\d.*/, ''));
+        meta.push(`📆 ${fmt(it.start)}${it.end ? ' ~ ' + fmt(it.end) : ' 부터 계속'}`); }
       if (it.time) meta.push(`⏰ ${it.time}${it.endTime ? '–' + it.endTime : ''}`);
       if (it.due) meta.push(`📌 ${fmt(it.due)}까지`);
       if (hasVal(it.alarm)) meta.push(`🔔 ${(ALARMS.find(a => a[0] === it.alarm) || [0, it.alarm + '분 전'])[1]}`);
@@ -1024,7 +1075,7 @@ function openQuickAdd(){
     <div class="sh-h"><button class="btn" data-act="close">닫기</button><b>빠르게 추가</b><button class="btn pri" data-act="save" id="qa_save">추가</button></div>
     <textarea id="qa_in" class="qa-in" placeholder="말하듯이 적어 보세요 (한 줄에 하나씩)"></textarea>
     <div id="qa_list"></div>
-    <div class="qa-ex">예) 내일 오후 3시 치과 · 금요일까지 레포트 제출 · 11월 24일 기생통 시험 · 다음주 화요일 2시~4시 팀플 · 30분 전 알림 · #학교생활<br>날짜가 없으면 선택한 날(${esc(dateLabel(S.sel))})에 들어가요. 카테고리는 단어와 지금까지 쓴 할일을 보고 골라요.</div>`,
+    <div class="qa-ex">예) 내일 오후 3시 치과 · 금요일까지 레포트 제출 · 11월 24일 기생통 시험 · 다음주 화요일 2시~4시 팀플 · 30분 전 알림 · #학교생활<br>반복) 매주 월~금 오전 8시 아이엘츠 학원 11월만 · 매일 듀오링고 · 화목 저녁 7시 운동 2주 동안 · 매월 25일 월세<br>날짜가 없으면 선택한 날(${esc(dateLabel(S.sel))})에 들어가요. 카테고리는 단어와 지금까지 쓴 할일을 보고 골라요.</div>`,
   (b, e) => {
     if (!b){
       if (e && e.target.id === 'qa_in') preview();
@@ -1034,8 +1085,18 @@ function openQuickAdd(){
     if (b.dataset.act === 'save'){
       preview();
       if (!items.length) return toast('할일을 적어 주세요');
-      items.forEach(it => saveTask(newTask({ title: it.title, categoryId: it.categoryId, date: it.date, time: it.time, endTime: it.endTime, due: it.due, alarm: it.alarm })));
-      closeSheet();
+      let nr = 0;
+      items.forEach(it => {
+        if (it.repeat){
+          nr++;
+          const r = { id: uid(), title: it.title, categoryId: it.categoryId, repeat: it.repeat, days: it.days || [], monthDay: it.monthDay, every: it.every,
+            start: it.start, end: it.end || '', time: it.time, endTime: it.endTime, alarm: it.alarm, autoAdd: true, createdAt: Date.now() };
+          S.routines[r.id] = r;
+          enqueue(r.id, async () => { const created = await api('saveRoutine', r); (created || []).forEach(t => { S.tasks[t.id] = t; }); render(); });
+        } else saveTask(newTask({ title: it.title, categoryId: it.categoryId, date: it.date, time: it.time, endTime: it.endTime, due: it.due, alarm: it.alarm }));
+      });
+      render(); closeSheet();
+      if (nr){ toast(nr === items.length ? `반복 일정 ${nr}개를 만들었어요 (⚙ 설정 → 루틴에서 수정)` : `할일 ${items.length - nr}개, 반복 일정 ${nr}개를 만들었어요`); return; }
       const dates = [...new Set(items.map(i => i.date))];
       toast(items.length === 1 ? `${dateLabel(items[0].date)}에 추가했어요` : `${items.length}개 추가했어요`);
       if (dates.length === 1 && dates[0] !== S.sel) goto(dates[0]);
