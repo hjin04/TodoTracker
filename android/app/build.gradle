@@ -1,0 +1,41 @@
+plugins { id 'com.android.application' }
+
+// GitHub Actions가 -PappUrl=https://<아이디>.github.io/<저장소>/ 로 넣어줍니다.
+def appUrl = (project.findProperty('appUrl') ?: 'https://example.github.io/my-todo/').toString()
+def ksFile = System.getenv('KEYSTORE_FILE')
+
+android {
+    namespace 'com.mytodo.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.mytodo.app'
+        minSdk 26
+        targetSdk 34
+        versionCode((project.findProperty('versionCode') ?: '1').toString().toInteger())
+        versionName "1.${(project.findProperty('versionCode') ?: '1')}"
+        buildConfigField 'String', 'APP_URL', "\"${appUrl}\""
+    }
+    buildFeatures { buildConfig true }
+
+    signingConfigs {
+        release {
+            if (ksFile) {
+                storeFile file(ksFile)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias 'todo'
+                keyPassword System.getenv('KEYSTORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig ksFile ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

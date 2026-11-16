@@ -1,0 +1,7 @@
+<resources>
+    <color name="bg">#111214</color>
+    <color name="widget">#F21B1D21</color>
+    <color name="text">#ECEDEF</color>
+    <color name="sub">#8E939C</color>
+    <color name="accent">#6E8EFF</color>
+</resources>

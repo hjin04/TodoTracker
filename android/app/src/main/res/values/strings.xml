@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">나의 할일</string>
+    <string name="widget_name">오늘 할일</string>
+    <string name="widget_desc">오늘 남은 할일을 보여주고 바로 체크할 수 있어요</string>
+</resources>
