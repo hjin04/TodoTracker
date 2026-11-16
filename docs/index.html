@@ -581,9 +581,22 @@ document.addEventListener('submit', e => {
   inp.value = '';
   saveTask(newTask({ title: v, categoryId: S.adding }));
 });
+/* 입력칸 밖을 누르면(포커스가 빠지면) 적어 둔 할일을 자동으로 추가 */
 document.addEventListener('focusout', e => {
   if (e.target.id !== 'newInput') return;
-  setTimeout(() => { const i = $('#newInput'); if (i && document.activeElement !== i && !i.value.trim()){ S.adding = null; render(); } }, 150);
+  const cat = S.adding, v = e.target.value.trim();
+  if (v && cat){
+    // 화면은 바로 다시 그리지 않음 → 지금 누른 버튼(다른 카테고리 + 등)의 클릭이 사라지지 않게
+    const t = newTask({ title: v, categoryId: cat });
+    S.tasks[t.id] = t; e.target.value = '';
+    enqueue(t.id, () => api('saveTask', S.tasks[t.id] || t));
+  }
+  setTimeout(() => {
+    const i = $('#newInput');
+    if (i && document.activeElement === i) { render(); return; }
+    if (S.adding === cat) S.adding = null;
+    render();
+  }, 150);
 });
 
 /* ───────── 시트 / 대화상자 ───────── */
@@ -636,9 +649,9 @@ function openCarrySheet(){
     <div class="sh-h"><button class="btn" data-act="close">닫기</button><b>미완료 할일 넘기기</b><button class="btn" data-act="all">전체 선택</button></div>
     <div class="mv-list" id="mv_list">${rows()}</div>
     <div class="lbl">어디로 옮길까요?</div>
-    <div class="mv-opts">
+    <div class="mv-opts" style="${day !== S.today ? '' : 'grid-template-columns:1fr'}">
       <button class="btn pri" data-to="${tomorrow}">${dateLabel(tomorrow) === '내일' ? '내일' : '다음날'}로 (${P(tomorrow)[1]}/${P(tomorrow)[2]})</button>
-      ${day !== S.today ? `<button class="btn pri" data-to="${S.today}">오늘로</button>` : `<button class="btn" data-to="${addDays(day, 7)}">일주일 뒤로</button>`}
+      ${day !== S.today ? `<button class="btn pri" data-to="${S.today}">오늘로</button>` : ''}
     </div>
     <div class="mv-date"><input type="date" id="mv_date" value="${addDays(day, 2)}"><button class="btn" data-act="custom">이 날로 옮기기</button></div>`,
   b => {
@@ -1130,7 +1143,7 @@ function openQuickAdd(){
     <div class="sh-h"><button class="btn" data-act="close">닫기</button><b>빠르게 추가</b><button class="btn pri" data-act="save" id="qa_save">추가</button></div>
     <textarea id="qa_in" class="qa-in" placeholder="말하듯이 적어 보세요 (한 줄에 하나씩)"></textarea>
     <div id="qa_list"></div>
-    <div class="qa-ex">예) 내일 오후 3시 치과 · 금요일까지 레포트 제출 · 11월 24일 기생통 시험 · 다음주 화요일 2시~4시 팀플 · 30분 전 알림 · #학교생활<br>반복) 매주 월~금 오전 8시 아이엘츠 학원 11월만 · 매일 듀오링고 · 화목마다 7시 운동 2주 동안 · 매월 25일 월세<br>반복 말("매일·매주·마다·매월") 없이 "주말 대청소", "월~금 학원"처럼 쓰면 이번 주에만 들어가요.<br>날짜가 없으면 선택한 날(${esc(dateLabel(S.sel))})에 들어가요. 카테고리는 단어와 지금까지 쓴 할일을 보고 골라요.</div>`,
+    <div class="qa-ex">예) 내일 3시 치과 · 금요일까지 레포트 · 11월 24일 시험 · 30분 전 알림 · #학교생활<br>반복) 매주 월~금 8시 학원 11월만 · 매일 영어 · 매월 25일 월세<br>"매일·매주·마다·매월" 없이 쓴 요일(주말 대청소 등)은 이번 주에만 들어가요.<br>날짜가 없으면 선택한 날(${esc(dateLabel(S.sel))})에 들어가고, 카테고리는 알아서 골라요.</div>`,
   (b, e) => {
     if (!b){
       if (e && e.target.id === 'qa_in') preview();
