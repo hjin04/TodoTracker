@@ -1,0 +1,22 @@
+name: 안드로이드 충돌 테스트
+
+on:
+  push:
+    branches: [debug-tests]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Robolectric 테스트
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew testReleaseUnitTest --no-daemon -PappUrl=https://hjin04.github.io/TodoTracker/ || true
+          for f in app/build/test-results/testReleaseUnitTest/*.xml; do echo "=== $f"; cat "$f" | head -c 20000; done
