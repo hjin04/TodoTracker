@@ -37,6 +37,14 @@ public class MainActivity extends Activity {
 
         final Uri home = Uri.parse(BuildConfig.APP_URL);
         web.setWebViewClient(new WebViewClient() {
+            /** 화면(웹) 프로세스가 죽어도 앱 전체가 꺼지지 않게 다시 그림 */
+            @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                Crash.note(MainActivity.this, "화면 프로세스 종료 (crash=" + detail.didCrash() + ")", new Exception("render process gone"));
+                recreate();
+                return true;
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl();
@@ -47,9 +55,24 @@ public class MainActivity extends Activity {
         });
         web.addJavascriptInterface(new Bridge(this, this), "TodoAndroid");
 
-        SyncJob.schedule(this);
+        try { SyncJob.schedule(this); } catch (Throwable e) { Crash.note(this, "동기화 예약", e); }
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl(BuildConfig.APP_URL);
+
+        // 지난번에 앱이 갑자기 꺼졌다면 오류 내용을 보여주고 복사할 수 있게
+        final String fatal = Crash.takeFatal(this);
+        if (!fatal.isEmpty()) {
+            new android.app.AlertDialog.Builder(this)
+                .setTitle("지난번 앱이 갑자기 종료됐어요")
+                .setMessage("아래 내용을 복사해 개발자(Claude)에게 보내 주세요.\n\n" + fatal)
+                .setPositiveButton("복사", (d, w) -> {
+                    ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    cm.setPrimaryClip(ClipData.newPlainText("오류", fatal));
+                    Toast.makeText(this, "복사했어요", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("닫기", null)
+                .show();
+        }
     }
 
     @Override
@@ -90,33 +113,40 @@ public class MainActivity extends Activity {
 
         /** 위젯에서 체크했지만 아직 앱에 전달 안 된 할일 → 앱이 받아서 저장 */
         @JavascriptInterface
-        public String takePendingDone() { return TodoWidget.takePending(ctx); }
+        public String takePendingDone() { try { return TodoWidget.takePending(ctx); } catch (Throwable e) { Crash.note(ctx, "위젯 체크 전달", e); return "[]"; } }
 
         @JavascriptInterface
-        public String widgetStatus() { return TodoWidget.status(ctx); }
+        public String widgetStatus() { try { return TodoWidget.status(ctx); } catch (Throwable e) { return "확인 실패"; } }
+
+        /** 설정 화면용: 최근 오류 기록 */
+        @JavascriptInterface
+        public String errorReport() { try { return Crash.report(ctx); } catch (Throwable e) { return ""; } }
+
+        @JavascriptInterface
+        public void clearErrors() { Crash.clear(ctx); }
 
         /* ───── 잠금화면 알림 ───── */
         @JavascriptInterface
-        public void setUpcoming(String json) { Reminders.setUpcoming(ctx, json); }
+        public void setUpcoming(String json) { try { Reminders.setUpcoming(ctx, json); } catch (Throwable e) { Crash.note(ctx, "할일 목록 받기", e); } }
 
         @JavascriptInterface
-        public String getReminderPrefs() { return Reminders.getPrefs(ctx); }
+        public String getReminderPrefs() { try { return Reminders.getPrefs(ctx); } catch (Throwable e) { return "{}"; } }
 
         @JavascriptInterface
-        public void setReminderPrefs(String json) { Reminders.setPrefs(ctx, json); }
+        public void setReminderPrefs(String json) { try { Reminders.setPrefs(ctx, json); } catch (Throwable e) { Crash.note(ctx, "알림 설정", e); } }
 
         @JavascriptInterface
         public void requestNotifyPermission() {
             if (android.os.Build.VERSION.SDK_INT >= 33 &&
                 ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                act.runOnUiThread(() -> act.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 11));
+                act.runOnUiThread(() -> { try { act.requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 11); } catch (Throwable e) { Crash.note(ctx, "알림 권한", e); } });
             }
         }
 
         /** 앱 테마(흰색/검정)에 맞춰 상단·하단 바 색 변경 */
         @JavascriptInterface
         public void setTheme(boolean dark) {
-            act.runOnUiThread(() -> {
+            act.runOnUiThread(() -> { try {
                 android.view.Window w = act.getWindow();
                 int bg = dark ? 0xFF000000 : 0xFFFFFFFF;
                 w.setStatusBarColor(bg);
@@ -126,21 +156,23 @@ public class MainActivity extends Activity {
                 int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
                 d.setSystemUiVisibility(dark ? (f & ~light) : (f | light));
                 d.setBackgroundColor(bg);
-            });
+            } catch (Throwable e) { Crash.note(ctx, "테마", e); } });
         }
 
         @JavascriptInterface
-        public void updateWidget(String json) { TodoWidget.save(ctx, json); }
+        public void updateWidget(String json) { try { TodoWidget.save(ctx, json); } catch (Throwable e) { Crash.note(ctx, "위젯 갱신", e); } }
 
         @JavascriptInterface
-        public void setConnection(String url, String token) { TodoWidget.setConnection(ctx, url, token); }
+        public void setConnection(String url, String token) { try { TodoWidget.setConnection(ctx, url, token); } catch (Throwable e) { Crash.note(ctx, "연결 저장", e); } }
 
         @JavascriptInterface
         public void copy(String text) {
-            ClipboardManager cm = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
-            cm.setPrimaryClip(ClipData.newPlainText("todo", text));
-            new android.os.Handler(ctx.getMainLooper()).post(() ->
-                Toast.makeText(ctx, "복사했어요", Toast.LENGTH_SHORT).show());
+            try {
+                ClipboardManager cm = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+                cm.setPrimaryClip(ClipData.newPlainText("todo", text));
+                new android.os.Handler(ctx.getMainLooper()).post(() ->
+                    Toast.makeText(ctx, "복사했어요", Toast.LENGTH_SHORT).show());
+            } catch (Throwable e) { Crash.note(ctx, "복사", e); }
         }
 
         @JavascriptInterface

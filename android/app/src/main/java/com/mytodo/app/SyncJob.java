@@ -16,6 +16,10 @@ public class SyncJob extends JobService {
     static final int ID = 7001;
 
     static void schedule(Context c) {
+        try { scheduleUnsafe(c); } catch (Throwable e) { Crash.note(c, "동기화 예약", e); }
+    }
+
+    private static void scheduleUnsafe(Context c) {
         JobScheduler js = c.getSystemService(JobScheduler.class);
         if (js.getPendingJob(ID) != null) return;
         js.schedule(new JobInfo.Builder(ID, new ComponentName(c, SyncJob.class))
@@ -38,7 +42,8 @@ public class SyncJob extends JobService {
                     if (up.optBoolean("ok")) Reminders.setUpcoming(c, up.getJSONArray("data").toString());
                     c.sendBroadcast(new android.content.Intent(c, TodoWidget.class).setAction(TodoWidget.ACT_REFRESH));
                 }
-            } catch (Exception ignored) {
+            } catch (Throwable e) {
+                Crash.note(c, "백그라운드 동기화", e);
             } finally {
                 jobFinished(params, false);
             }

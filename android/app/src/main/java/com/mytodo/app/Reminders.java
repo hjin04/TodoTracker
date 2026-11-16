@@ -54,6 +54,10 @@ public class Reminders {
     static class Item { long at; String title, text, taskId; int kind; }
 
     static synchronized void reschedule(Context c) {
+        try { rescheduleUnsafe(c); } catch (Throwable e) { Crash.note(c, "알림 예약", e); }
+    }
+
+    private static void rescheduleUnsafe(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
         SharedPreferences p = prefs(c);
         // 이전 예약 모두 취소
@@ -108,26 +112,29 @@ public class Reminders {
         for (int i = 0; i < list.length(); i++) {
             JSONObject t = list.optJSONObject(i);
             if (t == null) continue;
-            String title = t.optString("title"), date = t.optString("date"), time = t.optString("time"), due = t.optString("due"), cat = t.optString("cat");
-            String al = t.optString("alarm");
-            int off = al.isEmpty() ? (time.isEmpty() ? -1 : defOffset) : Integer.parseInt(al);
+            String title = str(t, "title"), date = str(t, "date"), time = str(t, "time"), due = str(t, "due"), cat = str(t, "cat");
+            if (!date.matches("\\d{4}-\\d{2}-\\d{2}")) continue;
+            if (!due.matches("\\d{4}-\\d{2}-\\d{2}")) due = "";
+            if (!time.matches("\\d{1,2}:\\d{2}")) time = "";
+            String al = str(t, "alarm");
+            int off = al.isEmpty() ? (time.isEmpty() ? -1 : defOffset) : toInt(al, -1);
             if (off >= 0) {
                 int h = 8, m = 0;
-                if (!time.isEmpty()) { String[] hm = time.split(":"); h = Integer.parseInt(hm[0]); m = Integer.parseInt(hm[1]); }
+                if (!time.isEmpty()) { String[] hm = time.split(":"); h = toInt(hm[0], 8); m = toInt(hm[1], 0); }
                 Item it = new Item();
                 it.at = at(date, h, m) - off * 60000L;
                 it.title = "⏰ " + title;
                 it.text = (time.isEmpty() ? "" : time + " · ") + cat + (off > 0 ? " · " + offText(off) : "");
-                it.taskId = t.optString("id"); it.kind = 1;
+                it.taskId = str(t, "id"); it.kind = 1;
                 if (it.at > now) out.add(it);
             }
             if (!due.isEmpty() && !"off".equals(dueMode)) {
                 if ("eve".equals(dueMode) || "both".equals(dueMode)) {
-                    Item it = new Item(); it.at = at(addDays(due, -1), 21, 0); it.title = "📌 내일 마감"; it.text = title + " · " + cat; it.taskId = t.optString("id"); it.kind = 2;
+                    Item it = new Item(); it.at = at(addDays(due, -1), 21, 0); it.title = "📌 내일 마감"; it.text = title + " · " + cat; it.taskId = str(t, "id"); it.kind = 2;
                     if (it.at > now) out.add(it);
                 }
                 if ("day".equals(dueMode) || "both".equals(dueMode)) {
-                    Item it = new Item(); it.at = at(due, 9, 0); it.title = "📌 오늘 마감"; it.text = title + " · " + cat; it.taskId = t.optString("id"); it.kind = 2;
+                    Item it = new Item(); it.at = at(due, 9, 0); it.title = "📌 오늘 마감"; it.text = title + " · " + cat; it.taskId = str(t, "id"); it.kind = 2;
                     if (it.at > now) out.add(it);
                 }
             }
@@ -144,6 +151,15 @@ public class Reminders {
         }
         out.sort((a, b) -> Long.compare(a.at, b.at));
         return out;
+    }
+
+    /** JSON 값이 없거나 null이면 "" */
+    static String str(JSONObject o, String k) { return (o == null || o.isNull(k)) ? "" : o.optString(k, "").trim(); }
+
+    static int toInt(String v, int def) {
+        try { return Integer.parseInt(v.trim()); } catch (Exception e) {
+            try { return (int) Double.parseDouble(v.trim()); } catch (Exception e2) { return def; }
+        }
     }
 
     static String offText(int m) {

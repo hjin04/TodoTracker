@@ -105,12 +105,15 @@ public class TodoWidget extends AppWidgetProvider {
     /* ───── 시스템 콜백 ───── */
     @Override
     public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
-        redraw(c);
-        syncAsync(c);
+        try { redraw(c); syncAsync(c); } catch (Throwable e) { Crash.note(c, "위젯 업데이트", e); }
     }
 
     @Override
     public void onReceive(Context c, Intent intent) {
+        try { receive(c, intent); } catch (Throwable e) { Crash.note(c, "위젯 수신", e); }
+    }
+
+    private void receive(Context c, Intent intent) {
         super.onReceive(c, intent);
         String a = intent.getAction();
         if (ACT_DONE.equals(a)) {
@@ -146,7 +149,7 @@ public class TodoWidget extends AppWidgetProvider {
                 if (!last.optBoolean("ok")) throw new Exception(last.optString("error", "서버 오류"));
                 save(ctx, last.getJSONObject("data").toString());
                 prefs(ctx).edit().putLong("lastOk", System.currentTimeMillis()).putString("lastError", "").apply();
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 prefs(ctx).edit().putString("lastError", String.valueOf(e.getMessage())).apply();
             } finally {
                 pr.finish();
@@ -202,6 +205,10 @@ public class TodoWidget extends AppWidgetProvider {
 
     /* ───── 그리기 ───── */
     static void redraw(Context c) {
+        try { redrawUnsafe(c); } catch (Throwable e) { Crash.note(c, "위젯 그리기", e); }
+    }
+
+    private static void redrawUnsafe(Context c) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         int[] ids = m.getAppWidgetIds(new ComponentName(c, TodoWidget.class));
         if (ids.length == 0) return;

@@ -14,6 +14,10 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context c, Intent intent) {
+        try { handle(c, intent); } catch (Throwable e) { Crash.note(c, "알림 수신", e); }
+    }
+
+    private void handle(Context c, Intent intent) {
         String a = intent.getAction();
         if (Intent.ACTION_BOOT_COMPLETED.equals(a) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)) {
             Reminders.reschedule(c);
@@ -47,7 +51,7 @@ public class ReminderReceiver extends BroadcastReceiver {
             .setContentIntent(PendingIntent.getActivity(c, nid, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         if (task != null && !task.isEmpty()) {
             Intent done = new Intent(c, ReminderReceiver.class).setAction(ACT_DONE).putExtra("task", task).putExtra("nid", nid);
-            b.addAction(new Notification.Action.Builder(null, "완료",
+            b.addAction(new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(c, R.drawable.ic_stat), "완료",
                 PendingIntent.getBroadcast(c, nid, done, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT)).build());
         }
         try { nm.notify(nid, b.build()); } catch (SecurityException ignored) { }
