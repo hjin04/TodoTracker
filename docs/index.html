@@ -85,6 +85,28 @@ header{display:flex;align-items:center;gap:2px;padding:4px 0 10px;white-space:no
 .chip .cal{font-size:12px}
 .task{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:10px}
 .task:hover{background:color-mix(in srgb,var(--soft) 60%,transparent)}
+[data-dnd]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.dnd-ghost{position:fixed;z-index:80;pointer-events:none;background:var(--sheet);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);opacity:.96;transform:scale(1.02)}
+.dnd-src{opacity:.25}
+body.dnd-on .items{min-height:34px;border-radius:10px;outline:1.5px dashed color-mix(in srgb,var(--sub) 35%,transparent);outline-offset:-2px}
+body.dnd-on{cursor:grabbing}
+.rt-cat{margin:16px 0 6px}
+.rt-head{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:999px;padding:10px 10px 10px 18px}
+.rt-head b{font-size:15px}
+.rt-head .plus{width:32px;height:32px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:20px;font-weight:700}
+.rt-list{margin:4px 6px 0;min-height:4px}
+.rt-row{display:flex;align-items:center;gap:8px;padding:12px 6px;border-bottom:1px solid var(--line);cursor:pointer;background:var(--bg)}
+.rt-row:last-child{border-bottom:0}
+.rt-row .m{flex:1;min-width:0}
+.rt-row .t{font-weight:700;word-break:break-word}
+.rt-row .st{font-weight:800;margin-right:4px}
+.rt-row .bar{color:var(--sub);margin-right:4px}
+.rt-row .d{font-size:13px;color:var(--sub);margin-top:3px}
+.rt-row .go{color:var(--sub);font-size:18px}
+.rt-empty{color:var(--sub);font-size:13px;padding:8px 6px}
+.sec-h{display:flex;align-items:center;gap:8px;margin:26px 4px 6px;color:var(--sub);font-weight:800;font-size:14px}
+.archived .rt-head,.archived .rt-row{opacity:.6}
+.tip{font-size:13px;color:var(--sub);margin:2px 4px 6px;line-height:1.5}
 .chk{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid color-mix(in srgb,var(--c) 75%,transparent);
   margin-top:0;display:grid;place-items:center}
 .chk.on{background:var(--c);border-color:var(--c)}
@@ -304,8 +326,20 @@ function applyTheme(){
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 const byId = arr => Object.fromEntries((arr || []).map(o => [o.id, o]));
-const sortedCats = () => Object.values(S.cats).filter(c => !c.deleted).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
-const cmpTask = (a, b) => (a.time || '~').localeCompare(b.time || '~') || ((a.createdAt || 0) - (b.createdAt || 0));
+/* 보관(archived)한 카테고리는 메인 화면·빠른 추가 등에서 숨김 */
+const allCats = () => Object.values(S.cats).filter(c => !c.deleted).sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+const sortedCats = () => allCats().filter(c => !c.archived);
+const archivedCats = () => allCats().filter(c => c.archived);
+const catVisible = id => !!(S.cats[id] && !S.cats[id].deleted && !S.cats[id].archived);
+const rtVisible = r => !r.deleted && !r.archived && catVisible(r.categoryId);
+/* 직접 끌어 옮긴 순서(order)가 있으면 그 순서, 없으면 시간 → 만든 순 */
+const cmpTask = (a, b) => {
+  const oa = a.order ?? null, ob = b.order ?? null;
+  if (oa !== null && ob !== null && oa !== ob) return oa - ob;
+  if (oa !== null && ob === null) return -1;
+  if (oa === null && ob !== null) return 1;
+  return (a.time || '~').localeCompare(b.time || '~') || ((a.createdAt || 0) - (b.createdAt || 0));
+};
 
 /* ───────── 서버 통신 (순서 보장 큐 + 주기적 새로고침) ───────── */
 const CONN_KEY = 'todo.conn', CACHE_KEY = 'todo.cache';
@@ -396,10 +430,10 @@ function addFromRoutine(rid){
 /* ───────── 렌더링 ───────── */
 function tasksByDate(){
   const m = {};
-  for (const t of Object.values(S.tasks)){ if (!S.cats[t.categoryId] || S.cats[t.categoryId].deleted) continue; (m[t.date] = m[t.date] || []).push(t); }
+  for (const t of Object.values(S.tasks)){ if (!catVisible(t.categoryId)) continue; (m[t.date] = m[t.date] || []).push(t); }
   return m;
 }
-function render(){ renderHeader(); const idx = tasksByDate(); renderCal(idx); renderDay(idx); if (S.settings) renderSettings(); afterRender(idx); }
+function render(){ if (typeof Drag !== 'undefined' && Drag.st) return; renderHeader(); const idx = tasksByDate(); renderCal(idx); renderDay(idx); if (S.settings) renderSettings(); afterRender(idx); }
 
 /* 화면이 바뀔 때마다: 기기에 캐시 저장(빠른 시작용) + 안드로이드 위젯 갱신 */
 let afterTimer = null, afterPending = null;
@@ -433,7 +467,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function pushUpcoming(){
   if (!window.TodoAndroid || !window.TodoAndroid.setUpcoming) return;
   const until = addDays(S.today, 8);
-  const list = Object.values(S.tasks).filter(t => !t.done && S.cats[t.categoryId] && ((t.date >= S.today && t.date <= until) || (t.due && t.due >= S.today && t.due <= until)))
+  const list = Object.values(S.tasks).filter(t => !t.done && catVisible(t.categoryId) && ((t.date >= S.today && t.date <= until) || (t.due && t.due >= S.today && t.due <= until)))
     .map(t => ({ id: t.id, title: t.title, date: t.date, time: t.time || '', alarm: hasVal(t.alarm) ? String(t.alarm) : '', due: t.due || '', cat: S.cats[t.categoryId].name }));
   try { window.TodoAndroid.setUpcoming(JSON.stringify(list)); } catch (e) {}
 }
@@ -529,13 +563,14 @@ function renderDay(idx){
   if (!cats.length) h += '<div class="empty">카테고리가 없어요.<br>오른쪽 위 ⚙ 설정에서 카테고리를 추가해 주세요.</div>';
   for (const c of cats){
     const tasks = list.filter(t => t.categoryId === c.id).sort(cmpTask);
-    const sugg = Object.values(S.routines).filter(r => !r.deleted && r.categoryId === c.id && routineMatches(r, S.sel)
+    const sugg = Object.values(S.routines).filter(r => rtVisible(r) && r.categoryId === c.id && routineMatches(r, S.sel)
       && !Object.values(S.tasks).some(t => t.routineId === r.id && (t.date === S.sel || t.key === r.id + '|' + S.sel)));
-    h += `<div class="cat"><button class="chip" style="--c:${ink(c.color)}" data-add="${c.id}">${c.gcal ? '<span class="cal">📅</span>' : ''}${esc(c.name)} <b>+</b></button>`;
+    h += `<div class="cat" data-cat="${c.id}"><button class="chip" style="--c:${ink(c.color)}" data-add="${c.id}">${c.gcal ? '<span class="cal">📅</span>' : ''}${esc(c.name)} <b>+</b></button><div class="items" data-dnd-group="task" data-cat="${c.id}">`;
     for (const t of tasks){
-      h += `<div class="task ${t.done ? 'done' : ''}"><button class="chk ${t.done ? 'on' : ''}" style="--c:${c.color};--ck:${checkInk(c.color)}" data-chk="${t.id}" aria-label="완료">${t.done ? CHECK : ''}</button>
+      h += `<div class="task ${t.done ? 'done' : ''}" data-dnd="task" data-id="${t.id}"><button class="chk ${t.done ? 'on' : ''}" style="--c:${c.color};--ck:${checkInk(c.color)}" data-chk="${t.id}" aria-label="완료">${t.done ? CHECK : ''}</button>
         <div class="body" data-edit="${t.id}"><div class="title">${esc(t.title)}</div>${metaHtml(t)}</div></div>`;
     }
+    h += '</div>';
     for (const r of sugg){
       h += `<div class="task sugg" style="--c:${ink(c.color)}" data-addr="${r.id}" role="button" title="눌러서 추가"><span class="rt">↻</span><div class="body"><div class="title">${esc(r.title)}</div>${r.time ? `<div class="meta"><span>${r.time}</span></div>` : ''}</div></div>`;
     }
@@ -551,6 +586,7 @@ function renderDay(idx){
 
 /* ───────── 메인 화면 이벤트 ───────── */
 document.addEventListener('click', e => {
+  if (Date.now() < Drag.suppressUntil) return;
   const el = e.target.closest('button,[data-edit],[data-addr]');
   if (!el || el.closest('#overlay,#dialog,#settings')) return;
   const ds = el.dataset;
@@ -598,6 +634,111 @@ document.addEventListener('focusout', e => {
     render();
   }, 150);
 });
+
+/* ───────── 끌어서 옮기기 (할일·루틴, 카테고리 사이도 가능) ─────────
+   휴대폰: 길게 누른 뒤 끌기 / PC: 마우스로 바로 끌기 */
+const Drag = { st: null, suppressUntil: 0 };
+function dragStart(el, x, y){
+  const r = el.getBoundingClientRect();
+  const ghost = el.cloneNode(true); ghost.classList.add('dnd-ghost');
+  ghost.style.width = r.width + 'px'; ghost.style.left = r.left + 'px'; ghost.style.top = r.top + 'px';
+  document.body.appendChild(ghost); el.classList.add('dnd-src'); document.body.classList.add('dnd-on');
+  Drag.st = { el, ghost, kind: el.dataset.dnd, dx: x - r.left, dy: y - r.top, x, y, raf: 0 };
+  if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) {}
+  autoScroll();
+}
+function dragMove(x, y){
+  const d = Drag.st; if (!d) return;
+  d.x = x; d.y = y;
+  d.ghost.style.left = (x - d.dx) + 'px'; d.ghost.style.top = (y - d.dy) + 'px';
+  d.ghost.style.display = 'none';
+  const under = document.elementFromPoint(x, y);
+  d.ghost.style.display = '';
+  if (!under) return;
+  let group = under.closest(`[data-dnd-group="${d.kind}"]`);
+  if (!group){ const wrap = under.closest(d.kind === 'task' ? '.cat' : '.rt-cat'); if (wrap) group = wrap.querySelector(`[data-dnd-group="${d.kind}"]`); }
+  if (!group) return;
+  const items = [...group.querySelectorAll(`:scope > [data-dnd="${d.kind}"]`)].filter(n => n !== d.el);
+  const before = items.find(n => { const rr = n.getBoundingClientRect(); return y < rr.top + rr.height / 2; });
+  const empty = group.querySelector(':scope > .rt-empty'); if (empty) empty.remove();
+  if (before) { if (before.previousElementSibling !== d.el) group.insertBefore(d.el, before); }
+  else if (group.lastElementChild !== d.el) group.appendChild(d.el);
+}
+function autoScroll(){
+  const d = Drag.st; if (!d) return;
+  const box = d.el.closest('#settings') ? $('#settings') : null, edge = 70, h = innerHeight;
+  const v = d.y < edge ? -12 : d.y > h - edge ? 12 : 0;
+  if (v){ if (box) box.scrollTop += v; else scrollBy(0, v); dragMove(d.x, d.y); }
+  d.raf = requestAnimationFrame(autoScroll);
+}
+function dragEnd(cancel){
+  const d = Drag.st; if (!d) return;
+  Drag.st = null; cancelAnimationFrame(d.raf);
+  d.ghost.remove(); d.el.classList.remove('dnd-src'); document.body.classList.remove('dnd-on');
+  Drag.suppressUntil = Date.now() + 350;
+  if (cancel){ render(); return; }
+  const group = d.el.parentElement, cat = group && group.dataset.cat, id = d.el.dataset.id;
+  const ids = [...group.querySelectorAll(`:scope > [data-dnd="${d.kind}"]`)].map(n => n.dataset.id);
+  if (d.kind === 'task') dropTask(id, cat, ids); else dropRoutine(id, cat, ids);
+}
+function dropTask(id, cat, ids){
+  const changed = [];
+  ids.forEach((tid, i) => {
+    const t = S.tasks[tid]; if (!t) return;
+    const nt = { ...t, order: i }; if (tid === id) nt.categoryId = cat;
+    if (nt.order !== t.order || nt.categoryId !== t.categoryId){ S.tasks[tid] = nt; changed.push(tid); }
+  });
+  render();
+  changed.forEach(tid => enqueue(tid, () => api('saveTask', S.tasks[tid])));
+  if (S.tasks[id] && changed.includes(id) && S.cats[cat]) toast(`'${S.cats[cat].name}'(으)로 옮겼어요`);
+}
+function dropRoutine(id, cat, ids){
+  const moved = S.routines[id] && S.routines[id].categoryId !== cat, changed = [];
+  ids.forEach((rid, i) => {
+    const r = S.routines[rid]; if (!r) return;
+    const nr = { ...r, order: i }; if (rid === id) nr.categoryId = cat;
+    if (nr.order !== r.order || nr.categoryId !== r.categoryId){ S.routines[rid] = nr; changed.push(rid); }
+  });
+  // 루틴을 다른 카테고리로 옮기면 오늘 이후의 그 루틴 할일도 같이 옮김
+  if (moved) Object.values(S.tasks).filter(t => t.routineId === id && t.date >= S.today && t.categoryId !== cat)
+    .forEach(t => { S.tasks[t.id] = { ...t, categoryId: cat }; enqueue(t.id, () => api('saveTask', S.tasks[t.id])); });
+  render();
+  changed.forEach(rid => enqueue(rid, () => api('saveRoutine', S.routines[rid], 'none')));
+  if (moved && S.cats[cat]) toast(`루틴을 '${S.cats[cat].name}'(으)로 옮겼어요`);
+}
+(function(){
+  let pend = null;
+  const canStart = t => !t.closest('.chk, input, textarea, select, .plus, a');
+  // 터치: 길게 누르기(0.35초) 후 끌기, 그 전에 움직이면 일반 스크롤
+  document.addEventListener('touchstart', e => {
+    if (Drag.st || e.touches.length !== 1) return;
+    const el = e.target.closest('[data-dnd]'); if (!el || !canStart(e.target)) return;
+    const t = e.touches[0];
+    pend = { el, x: t.clientX, y: t.clientY, timer: setTimeout(() => { if (pend) { dragStart(pend.el, pend.x, pend.y); pend = null; } }, 350) };
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (Drag.st){ e.preventDefault(); dragMove(t.clientX, t.clientY); return; }
+    if (pend && Math.hypot(t.clientX - pend.x, t.clientY - pend.y) > 8){ clearTimeout(pend.timer); pend = null; }
+    else if (pend){ pend.x = t.clientX; pend.y = t.clientY; }
+  }, { passive: false });
+  const endTouch = cancel => { if (pend){ clearTimeout(pend.timer); pend = null; } if (Drag.st) dragEnd(cancel); };
+  document.addEventListener('touchend', () => endTouch(false));
+  document.addEventListener('touchcancel', () => endTouch(true));
+  document.addEventListener('contextmenu', e => { if (e.target.closest('[data-dnd]')) e.preventDefault(); });
+  // 마우스: 누른 채 6px 이상 움직이면 끌기
+  let mpend = null;
+  document.addEventListener('mousedown', e => {
+    if (e.button !== 0 || Drag.st) return;
+    const el = e.target.closest('[data-dnd]'); if (!el || !canStart(e.target)) return;
+    mpend = { el, x: e.clientX, y: e.clientY };
+  });
+  document.addEventListener('mousemove', e => {
+    if (Drag.st){ e.preventDefault(); dragMove(e.clientX, e.clientY); return; }
+    if (mpend && Math.hypot(e.clientX - mpend.x, e.clientY - mpend.y) > 6){ dragStart(mpend.el, mpend.x, mpend.y); dragMove(e.clientX, e.clientY); mpend = null; }
+  });
+  document.addEventListener('mouseup', () => { mpend = null; if (Drag.st) dragEnd(false); });
+})();
 
 /* ───────── 시트 / 대화상자 ───────── */
 let sheetHandler = null;
@@ -753,25 +894,46 @@ function notifySection(){
       <input type="checkbox" class="sw" id="rp_morning" ${r.morning ? 'checked' : ''}></div>` : ''}
   </div>`;
 }
+const cmpRoutine = (a, b) => ((a.order ?? 1e9) - (b.order ?? 1e9)) || String(a.title).localeCompare(String(b.title));
+function rtStatus(r){
+  if (r.archived || S.cats[r.categoryId]?.archived) return ['보관', 'var(--sub)'];
+  if (r.end && r.end < S.today) return ['종료', 'var(--danger)'];
+  if (r.start && r.start > S.today) return ['예정', 'var(--warn)'];
+  return ['진행 중', 'var(--accent)'];
+}
+function rtRow(r){
+  const [st, col] = rtStatus(r);
+  const rep = rtSummary({ ...r, time: '', alarm: '', end: '' }).replace(/ · (자동|직접) 추가$/, '');
+  const tm = r.time ? (+r.time.slice(0, 2) < 12 ? '오전 ' : '오후 ') + ((+r.time.slice(0, 2) % 12) || 12) + ':' + r.time.slice(3) : '';
+  const parts = [`${fmtD(r.start)} ~ ${r.end ? fmtD(r.end) : ''}`, rep, tm, r.autoAdd ? '자동' : ''].filter(Boolean);
+  return `<div class="rt-row" data-editrt="${r.id}" ${r.archived || S.cats[r.categoryId]?.archived ? '' : `data-dnd="routine" data-id="${r.id}"`} role="button">
+    <div class="m"><div><span class="st" style="color:${col}">${st}</span><span class="bar">|</span><span class="t">${esc(r.title)}</span></div><div class="d">${esc(parts.join(' / '))}</div></div><span class="go">›</span></div>`;
+}
+const fmtD = d => { if (!d) return ''; const [y, m, dd] = P(d); return `${y}. ${m}. ${dd}.`; };
 function renderSettings(){
   const tab = S.settings;
   let h = `<div class="pg"><div class="pg-h"><button class="icon-btn" data-act="back" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button><b>설정</b></div>
     <div class="tabs"><button class="${tab === 'cats' ? 'on' : ''}" data-tab="cats">카테고리</button><button class="${tab === 'routines' ? 'on' : ''}" data-tab="routines">루틴</button><button class="${tab === 'info' ? 'on' : ''}" data-tab="info">기타</button></div>`;
   if (tab === 'cats'){
-    const cats = sortedCats();
+    const cats = sortedCats(), arch = archivedCats();
     h += '<div class="list">' + cats.map((c, i) => `<div class="li"><span class="dot" style="background:${c.color}"></span>
       <button class="li-main" data-editcat="${c.id}"><span>${esc(c.name)}</span>${c.gcal ? '<span class="tag">📅 구글캘린더 연동</span>' : ''}</button>
       <button class="icon-btn" data-up="${c.id}" ${i === 0 ? 'disabled' : ''} aria-label="위로">↑</button>
       <button class="icon-btn" data-down="${c.id}" ${i === cats.length - 1 ? 'disabled' : ''} aria-label="아래로">↓</button></div>`).join('') + '</div>'
       + '<button class="btn wide" data-act="newcat">+ 카테고리 추가</button>';
+    if (arch.length) h += `<div class="sec-h">📦 보관한 카테고리 ${arch.length}개</div><div class="tip">메인 화면에서는 숨겨져요. 할일·루틴은 그대로 남아 있어요.</div><div class="list archived">` + arch.map(c => `<div class="li"><span class="dot" style="background:${c.color}"></span>
+      <button class="li-main" data-editcat="${c.id}"><span>${esc(c.name)}</span></button><button class="mini" data-unarchcat="${c.id}">꺼내기</button></div>`).join('') + '</div>';
   } else if (tab === 'routines'){
-    const order = Object.fromEntries(sortedCats().map((c, i) => [c.id, i]));
-    const rs = Object.values(S.routines).filter(r => !r.deleted && S.cats[r.categoryId])
-      .sort((a, b) => (order[a.categoryId] - order[b.categoryId]) || a.title.localeCompare(b.title));
-    h += rs.length ? '<div class="list">' + rs.map(r => `<div class="li"><span class="dot" style="background:${S.cats[r.categoryId].color}"></span>
-      <button class="li-main" data-editrt="${r.id}"><span>${esc(r.title)}</span><span class="s">${esc(S.cats[r.categoryId].name)} · ${rtSummary(r)}</span></button></div>`).join('') + '</div>'
-      : '<div class="empty">아직 루틴이 없어요</div>';
-    h += '<button class="btn wide" data-act="newrt">+ 루틴 추가</button>';
+    h += `<div class="tip">카테고리의 ＋로 루틴을 추가하고, 루틴을 길게 눌러 끌면 순서나 카테고리를 바꿀 수 있어요.</div>`;
+    const live = Object.values(S.routines).filter(r => !r.deleted && S.cats[r.categoryId] && !S.cats[r.categoryId].deleted);
+    const group = (c, rs, archived) => `<div class="rt-cat ${archived ? 'archived' : ''}"><div class="rt-head"><b style="color:${ink(c.color)}">${esc(c.name)}${c.archived ? ' <span style="font-size:12px;color:var(--sub)">(보관됨)</span>' : ''}</b>${archived ? '' : `<button class="plus" data-newrt-cat="${c.id}" aria-label="${esc(c.name)} 루틴 추가">＋</button>`}</div>
+      <div class="rt-list" ${archived ? '' : `data-dnd-group="routine" data-cat="${c.id}"`}>${rs.map(rtRow).join('') || (archived ? '' : '<div class="rt-empty">루틴 없음</div>')}</div></div>`;
+    for (const c of sortedCats()) h += group(c, live.filter(r => r.categoryId === c.id && !r.archived).sort(cmpRoutine), false);
+    const arch = live.filter(r => r.archived || S.cats[r.categoryId].archived);
+    if (arch.length){
+      h += `<div class="sec-h">📦 보관한 루틴 ${arch.length}개</div><div class="tip">메인 화면에 보이지 않고 자동 추가도 멈춰요. 눌러서 꺼낼 수 있어요.</div>`;
+      for (const c of allCats()){ const rs = arch.filter(r => r.categoryId === c.id).sort(cmpRoutine); if (rs.length) h += group(c, rs, true); }
+    }
   } else {
     const code = CONN ? btoa(JSON.stringify({ u: CONN.url, t: CONN.token })) : '';
     const apk = !IS_APP && apkUrl();
@@ -798,6 +960,8 @@ function renderSettings(){
       <span class="s">매일 자정, 지난 7일 동안 완료 못 한 할일을 오늘로 옮겨요 (루틴 할일은 제외)</span></div>
       <input type="checkbox" class="sw" id="p_carry" ${S.prefs && S.prefs.autoCarry ? 'checked' : ''}></div></div>
       <div class="info">
+      <h4>✋ 끌어서 옮기기</h4><p>할일을 길게 누른 뒤 끌면(PC는 마우스로 끌기) 순서를 바꾸거나 다른 카테고리로 옮길 수 있어요. 루틴도 ⚙ 설정 → 루틴에서 같은 방법으로 옮겨요.</p>
+      <h4>📦 보관하기</h4><p>더 안 쓰는 카테고리나 루틴은 편집 화면에서 "보관하기"를 누르면 메인 화면에서 숨겨져요. 지우지 않으니 언제든 꺼낼 수 있어요.</p>
       <h4>↪ 할일 넘기기</h4><p>날짜 제목 옆 [미완료 N개 넘기기]를 누르면 못 한 할일을 골라 내일, 오늘 또는 원하는 날짜로 한 번에 옮길 수 있어요. 하나만 옮길 때는 할일을 눌러 [내일 하기] 또는 [다른 날로]를 쓰세요. 옮겨진 할일에는 "↪ 원래 날짜"가 표시돼요.</p>
       <h4>🔄 동기화</h4><p>모든 데이터는 내 구글 드라이브의 "TodoTracker 데이터" 시트 (예전에 만든 경우 "나의 할일 데이터")에 저장돼요. 폰·PC·안드로이드 앱이 같은 서버에 연결되어 자동으로 맞춰지고, 다른 기기에서 바꾼 내용은 20초 안에(또는 앱으로 돌아올 때) 반영돼요. 제목 옆 점이 초록색이면 저장 완료, 주황색이면 저장 중이에요.</p>
       <h4>✏️ 빠르게 추가</h4><p>오른쪽 아래 ＋ 버튼을 누르고 "내일 오후 3시 치과", "금요일까지 레포트 제출"처럼 말하듯 적으면 날짜·시간·기한·카테고리를 알아서 채워요. "매주 월~금 오전 8시 학원 11월만", "매일 듀오링고", "화목 7시 운동 2주 동안"처럼 반복을 적으면 루틴(반복 일정)으로 만들어요. 한 줄에 하나씩 여러 개를 한 번에 넣을 수 있고, 저장 전에 카테고리를 바꿀 수 있어요. "#카테고리"로 직접 정할 수도 있어요.</p>
@@ -823,7 +987,8 @@ $('#settings').addEventListener('change', e => {
   toast(prefs.autoCarry ? '매일 자정에 못 한 일을 오늘로 옮겨요' : '자동 넘기기를 껐어요');
 });
 $('#settings').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
+  if (Date.now() < (Drag.suppressUntil || 0)) return;
+  const b = e.target.closest('button,[data-editrt]'); if (!b) return;
   const ds = b.dataset;
   if (ds.act === 'back'){ S.settings = null; $('#settings').classList.add('hidden'); render(); return; }
   if (ds.act === 'copyconn'){ copyText($('#connCode').value); return; }
@@ -844,6 +1009,8 @@ $('#settings').addEventListener('click', e => {
   if (ds.tab){ S.settings = ds.tab; renderSettings(); return; }
   if (ds.act === 'newcat' || ds.editcat) return openCatEditor(ds.editcat);
   if (ds.act === 'newrt' || ds.editrt) return openRoutineEditor(ds.editrt);
+  if (ds.newrtCat) return openRoutineEditor(null, ds.newrtCat);
+  if (ds.unarchcat){ const c = { ...S.cats[ds.unarchcat], archived: false }; S.cats[c.id] = c; render(); enqueue(c.id, () => api('saveCategory', c)); toast(`'${c.name}'을(를) 꺼냈어요`); return; }
   if (ds.up || ds.down){
     const cats = sortedCats(), i = cats.findIndex(c => c.id === (ds.up || ds.down)), j = ds.up ? i - 1 : i + 1;
     [cats[i], cats[j]] = [cats[j], cats[i]];
@@ -866,7 +1033,8 @@ function openCatEditor(id){
     <div class="custom-color"><input type="color" id="c_custom" value="${c.color}"><span>직접 고르기</span><span class="chip preview-chip" id="c_prev" style="--c:${ink(c.color)}">${esc(c.name || '미리보기')}</span></div>
     <div class="field" style="margin-top:12px"><label class="grow" style="width:auto;color:var(--text)">📅 구글캘린더 연동</label><input type="checkbox" class="sw" id="c_gcal" ${c.gcal ? 'checked' : ''}>
       <span class="hint" style="padding-left:0">켜면 이 카테고리의 할일이 내 구글캘린더에 일정으로 등록돼요.</span></div>
-    ${isNew ? '' : '<div class="acts"><button class="btn danger" data-act="del">카테고리 삭제</button></div>'}`,
+    ${isNew ? '' : `<div class="acts"><button class="btn" data-act="archive">${c.archived ? '📤 꺼내기' : '📦 보관하기'}</button><button class="btn danger" data-act="del">카테고리 삭제</button></div>
+      <div class="note">보관하면 메인 화면과 빠른 추가에서 숨겨지고, 할일과 루틴은 지워지지 않아요.</div>`}`,
   async (b, e) => {
     if (!b){
       if (e && e.target.id === 'c_custom'){ c.color = e.target.value.toUpperCase(); $('#c_sw').querySelectorAll('.on').forEach(x => x.classList.remove('on')); $('#c_prev').style.setProperty('--c', ink(c.color)); }
@@ -883,8 +1051,15 @@ function openCatEditor(id){
         enqueue(c.id, () => api('saveCategory', c));
         break;
       }
+      case 'archive': {
+        c.name = $('#c_name').value.trim() || c.name; c.archived = !c.archived;
+        S.cats[c.id] = c; closeSheet(); render();
+        enqueue(c.id, () => api('saveCategory', c));
+        toast(c.archived ? `'${c.name}'을(를) 보관했어요 (⚙ 카테고리 아래에서 꺼낼 수 있어요)` : `'${c.name}'을(를) 꺼냈어요`);
+        break;
+      }
       case 'del': {
-        if (!await confirmBox(`'${c.name}' 카테고리를 삭제할까요?\n안에 있는 할일과 루틴도 모두 삭제돼요.`)) return;
+        if (!await confirmBox(`'${c.name}' 카테고리를 삭제할까요?\n안에 있는 할일과 루틴도 모두 삭제돼요.\n(지우기 아까우면 '보관하기'를 쓰세요)`)) return;
         delete S.cats[c.id];
         for (const t of Object.values(S.tasks)) if (t.categoryId === c.id) delete S.tasks[t.id];
         for (const r of Object.values(S.routines)) if (r.categoryId === c.id) delete S.routines[r.id];
@@ -897,9 +1072,9 @@ function openCatEditor(id){
   if (isNew) setTimeout(() => $('#c_name') && $('#c_name').focus(), 50);
 }
 
-function openRoutineEditor(id){
+function openRoutineEditor(id, presetCat){
   const isNew = !id;
-  const firstCat = sortedCats()[0];
+  const firstCat = (presetCat && S.cats[presetCat]) || sortedCats()[0];
   if (isNew && !firstCat) return toast('먼저 카테고리를 만들어 주세요');
   const r = isNew
     ? { id: uid(), title: '', categoryId: firstCat.id, repeat: 'weekly', days: [dow(S.today)], monthDay: Number(S.today.slice(8)), every: 2,
@@ -925,7 +1100,8 @@ function openRoutineEditor(id){
     <div class="field"><label>알림</label><select id="e_alarm">${alarmOptions(r.alarm)}</select><span class="hint" id="e_ahint"></span></div>
     <div class="field"><label class="grow" style="width:auto;color:var(--text)">자동으로 추가</label><input type="checkbox" class="sw" id="r_auto" ${r.autoAdd ? 'checked' : ''}>
       <span class="hint" style="padding-left:0">끄면(수동) 해당 날짜에 흐리게 보이고, 눌러서 넣어요. 켜려면(자동) 시작일과 종료일을 모두 정해야 해요.</span></div>
-    ${isNew ? '' : '<div class="acts"><button class="btn danger" data-act="del">루틴 삭제</button></div>'}`,
+    ${isNew ? '' : `<div class="acts"><button class="btn" data-act="archive">${r.archived ? '📤 꺼내기' : '📦 보관하기'}</button><button class="btn danger" data-act="del">루틴 삭제</button></div>
+      <div class="note">보관하면 메인 화면에 보이지 않고 자동 추가도 멈춰요. 이미 만들어진 할일은 그대로예요.</div>`}`,
   async b => {
     if (!b){ alarmHint(); return; }
     const ds = b.dataset;
@@ -934,6 +1110,13 @@ function openRoutineEditor(id){
     if (ds.day){ const d = Number(ds.day); r.days = r.days.includes(d) ? r.days.filter(x => x !== d) : [...r.days, d]; b.classList.toggle('on'); return; }
     switch (ds.act){
       case 'close': closeSheet(); break;
+      case 'archive': {
+        const nr = { ...S.routines[r.id], archived: !S.routines[r.id].archived };
+        S.routines[nr.id] = nr; closeSheet(); render();
+        enqueue(nr.id, () => api('saveRoutine', nr, 'none'));
+        toast(nr.archived ? '루틴을 보관했어요' : '루틴을 꺼냈어요');
+        break;
+      }
       case 'clrend': $('#r_end').value = ''; break;
       case 'clrtime': $('#e_time').value = ''; $('#r_endt').value = ''; alarmHint(); break;
       case 'save': {

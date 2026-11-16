@@ -120,7 +120,7 @@ function handle_(req) {
 function widget() {
   var today = today_();
   var cats = catMap_();
-  var tasks = listObjs_('tasks', function (r) { return r.date === today; }).filter(function (t) { return cats[t.categoryId]; });
+  var tasks = listObjs_('tasks', function (r) { return r.date === today; }).filter(function (t) { return cats[t.categoryId] && !cats[t.categoryId].archived; });
   var left = tasks.filter(function (t) { return !t.done; }).sort(function (a, b) {
     return ((cats[a.categoryId].order || 0) - (cats[b.categoryId].order || 0)) ||
       (a.time || '~').localeCompare(b.time || '~') || ((a.createdAt || 0) - (b.createdAt || 0));
@@ -289,7 +289,7 @@ function getSettings_() {
 function upcoming() {
   var today = today_(), until = addDays_(today, 8), cats = catMap_();
   return listObjs_('tasks').filter(function (t) {
-    if (t.done || !cats[t.categoryId]) return false;
+    if (t.done || !cats[t.categoryId] || cats[t.categoryId].archived) return false;
     return (t.date >= today && t.date <= until) || (t.due && t.due >= today && t.due <= until);
   }).map(function (t) {
     return { id: t.id, title: t.title, date: t.date, time: t.time || '', alarm: hasVal_(t.alarm) ? t.alarm : '', due: t.due || '', cat: cats[t.categoryId].name };
@@ -374,7 +374,7 @@ function deleteRoutine(id) {
 
 function generate_(from, to, onlyId) {
   var routines = listObjs_('routines').filter(function (r) {
-    return r.autoAdd && (!onlyId || r.id === onlyId);
+    return r.autoAdd && !r.archived && (!onlyId || r.id === onlyId);
   });
   if (!routines.length) return [];
   var cats = {};
@@ -387,7 +387,7 @@ function generate_(from, to, onlyId) {
     for (var i = 0; i < routines.length; i++) {
       var r = routines[i];
       var k = r.id + '|' + d;
-      if (!cats[r.categoryId] || keys[k] || !routineMatches_(r, d)) continue;
+      if (!cats[r.categoryId] || cats[r.categoryId].archived || keys[k] || !routineMatches_(r, d)) continue;
       keys[k] = 1;
       var t = {
         id: Utilities.getUuid(), title: r.title, categoryId: r.categoryId, date: d,
