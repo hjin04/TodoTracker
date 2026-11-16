@@ -528,7 +528,7 @@ function renderDay(idx){
         <div class="body" data-edit="${t.id}"><div class="title">${esc(t.title)}</div>${metaHtml(t)}</div></div>`;
     }
     for (const r of sugg){
-      h += `<div class="task sugg" style="--c:${ink(c.color)}" data-addr="${r.id}" role="button" title="눌러서 추가"><span class="rt">↻</span><div class="body"><div class="title">${esc(r.title)}</div>${r.time ? `<div class="meta"><span>${r.time}</span></div>` : ''}</div><button class="mini" data-addr="${r.id}">추가</button></div>`;
+      h += `<div class="task sugg" style="--c:${ink(c.color)}" data-addr="${r.id}" role="button" title="눌러서 추가"><span class="rt">↻</span><div class="body"><div class="title">${esc(r.title)}</div>${r.time ? `<div class="meta"><span>${r.time}</span></div>` : ''}</div></div>`;
     }
     if (S.adding === c.id){
       h += `<div class="task adding" style="--c:${ink(c.color)}"><span class="chk"></span><form id="newForm"><input id="newInput" placeholder="할일 입력 후 Enter" enterkeyhint="done" autocomplete="off"></form></div>`;
@@ -764,7 +764,7 @@ function renderSettings(){
       <h4>✏️ 빠르게 추가</h4><p>오른쪽 아래 ＋ 버튼을 누르고 "내일 오후 3시 치과", "금요일까지 레포트 제출"처럼 말하듯 적으면 날짜·시간·기한·카테고리를 알아서 채워요. "매주 월~금 오전 8시 학원 11월만", "매일 듀오링고", "화목 7시 운동 2주 동안"처럼 반복을 적으면 루틴(반복 일정)으로 만들어요. 한 줄에 하나씩 여러 개를 한 번에 넣을 수 있고, 저장 전에 카테고리를 바꿀 수 있어요. "#카테고리"로 직접 정할 수도 있어요.</p>
       <h4>🔔 시간 알림</h4><p>기본은 구글캘린더 "할일 알림" 캘린더로 알려요. 안드로이드 앱에서 "잠금화면 알림"을 켜면 앱이 직접 알려 주고, 알림에서 바로 완료할 수도 있어요.</p>
       <h4>📅 구글캘린더 연동</h4><p>카테고리 설정에서 "구글캘린더 연동"을 켠 카테고리(기본: 외출)의 할일은 내 기본 구글캘린더에 일정으로 등록·수정·삭제돼요. 시간이 없으면 오전 8시~9시 일정으로 들어가요.</p>
-      <h4>↻ 루틴</h4><p>"자동 추가"를 켜면 매일 자정에 앞으로 7일치 할일이 자동으로 생겨요. 끄면 해당 요일에 흐리게 표시되고 [추가]를 눌러 직접 넣을 수 있어요. 자동 추가된 할일을 지우면 그날은 다시 생기지 않아요.</p>
+      <h4>↻ 루틴</h4><p>"자동 추가"를 켜면 매일 자정에 앞으로 7일치 할일이 자동으로 생겨요. 끄면 해당 요일에 흐리게 표시되고 눌러서 바로 넣을 수 있어요. 자동 추가된 할일을 지우면 그날은 다시 생기지 않아요.</p>
       <h4>📌 기한</h4><p>할일에 기한을 정하면 D-day가 표시돼요. 기한이 하루 이내로 남으면 빨간색으로 바뀌어요.</p></div>`;
   }
   $('#settings').innerHTML = h + '</div>';
@@ -882,7 +882,7 @@ function openRoutineEditor(id){
     <div class="field nw"><label>시간</label><input type="time" id="e_time" value="${r.time || ''}"><span>~</span><input type="time" id="r_endt" value="${r.endTime || ''}"><button class="x" data-act="clrtime" aria-label="시간 지우기">✕</button></div>
     <div class="field"><label>알림</label><select id="e_alarm">${alarmOptions(r.alarm)}</select><span class="hint" id="e_ahint"></span></div>
     <div class="field"><label class="grow" style="width:auto;color:var(--text)">자동으로 추가</label><input type="checkbox" class="sw" id="r_auto" ${r.autoAdd ? 'checked' : ''}>
-      <span class="hint" style="padding-left:0">끄면 해당 날짜에 흐리게 보이고, [추가]를 눌러 직접 넣어요.</span></div>
+      <span class="hint" style="padding-left:0">끄면 해당 날짜에 흐리게 보이고, 눌러서 바로 넣어요.</span></div>
     ${isNew ? '' : '<div class="acts"><button class="btn danger" data-act="del">루틴 삭제</button></div>'}`,
   async b => {
     if (!b){ alarmHint(); return; }
