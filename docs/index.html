@@ -753,6 +753,9 @@ function renderSettings(){
       <div class="li" style="padding:14px;flex-wrap:wrap;gap:10px"><div class="li-main"><span>🍀 달력 완료 표시</span><span class="s">완료한 할일의 카테고리 색으로 날짜가 채워져요</span></div>
         <div class="chips">${[['clover','4분할'],['gradient','그라데이션']].map(([k, l]) => `<button class="opt ${S.look.badge === k ? 'on' : ''}" data-badge-set="${k}">${l}</button>`).join('')}</div></div>
       ${IS_APP && window.TodoAndroid.widgetStatus ? `<div class="li" style="padding:14px"><div class="li-main"><span>🧩 위젯 상태</span><span class="s" id="wStatus">${esc(window.TodoAndroid.widgetStatus())}</span></div></div>` : ''}
+      ${IS_APP && window.TodoAndroid.errorReport && window.TodoAndroid.errorReport() ? `<div class="li" style="padding:14px;flex-wrap:wrap;gap:8px"><div class="li-main"><span>⚠️ 오류 기록</span><span class="s">문제가 있으면 복사해서 보내 주세요</span></div>
+        <button class="mini" data-act="copyerr">복사</button><button class="mini" data-act="clearerr">지우기</button>
+        <textarea class="codebox" readonly id="errBox">${esc(window.TodoAndroid.errorReport())}</textarea></div>` : ''}
     </div>
     ${notifySection()}
     <div class="list" style="margin-bottom:14px"><div class="li" style="padding:14px"><div class="li-main"><span>못 한 일 자동으로 넘기기</span>
@@ -788,6 +791,8 @@ $('#settings').addEventListener('click', e => {
   const ds = b.dataset;
   if (ds.act === 'back'){ S.settings = null; $('#settings').classList.add('hidden'); render(); return; }
   if (ds.act === 'copyconn'){ copyText($('#connCode').value); return; }
+  if (ds.act === 'copyerr'){ copyText($('#errBox').value); return; }
+  if (ds.act === 'clearerr'){ try { window.TodoAndroid.clearErrors(); } catch (e) {} renderSettings(); return; }
   if (ds.themeSet){ S.look.theme = ds.themeSet; store.set('todo.theme', ds.themeSet); applyTheme(); renderSettings(); return; }
   if (ds.rp){ const r = reminderPrefs(); r[ds.rp] = ds.rp === 'offset' ? Number(ds.v) : ds.v; saveReminderPrefs(r); renderSettings(); return; }
   if (ds.badgeSet){ S.look.badge = ds.badgeSet; store.set('todo.badge', ds.badgeSet); renderSettings(); render(); return; }

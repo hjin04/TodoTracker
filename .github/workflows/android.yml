@@ -39,6 +39,8 @@ jobs:
           OWNER=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
           REPO="${GITHUB_REPOSITORY#*/}"
           chmod +x gradlew
+          # 충돌 테스트를 통과해야만 앱을 만들어 올림
+          ./gradlew testReleaseUnitTest --no-daemon -PappUrl="https://${OWNER}.github.io/${REPO}/"
           ./gradlew assembleRelease --no-daemon \
             -PappUrl="https://${OWNER}.github.io/${REPO}/" \
             -PversionCode=${{ github.run_number }}
