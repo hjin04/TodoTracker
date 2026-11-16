@@ -90,6 +90,15 @@ header{display:flex;align-items:center;gap:2px;padding:4px 0 10px;white-space:no
 .dnd-src{opacity:.25}
 body.dnd-on .items:empty{min-height:30px}
 body.dnd-on{cursor:grabbing}
+.cat-sec{display:flex;align-items:center;justify-content:space-between;margin:20px 4px 12px}
+.cat-sec b{font-size:16px}
+.pill-btn{background:var(--soft);border-radius:999px;padding:11px 20px;font-weight:700}
+.cat-list{display:flex;flex-direction:column;gap:12px}
+.cat-pill{display:flex;align-items:center;gap:10px;background:var(--chip-base);border-radius:999px;padding:17px 24px;cursor:pointer}
+.cat-pill .nm{font-weight:800;font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-pill .cal{font-size:14px}
+.cat-pill .ed{font-size:14px;opacity:.85;flex:none}
+.cat-list.archived .cat-pill{opacity:.55}
 .rt-cat{margin:16px 0 6px}
 .rt-head{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:999px;padding:10px 10px 10px 18px}
 .rt-head b{font-size:15px}
@@ -657,7 +666,7 @@ function dragMove(x, y){
   d.ghost.style.display = '';
   if (!under) return;
   let group = under.closest(`[data-dnd-group="${d.kind}"]`);
-  if (!group){ const wrap = under.closest(d.kind === 'task' ? '.cat' : '.rt-cat'); if (wrap) group = wrap.querySelector(`[data-dnd-group="${d.kind}"]`); }
+  if (!group && d.kind !== 'cat'){ const wrap = under.closest(d.kind === 'task' ? '.cat' : '.rt-cat'); if (wrap) group = wrap.querySelector(`[data-dnd-group="${d.kind}"]`); }
   if (!group) return;
   const items = [...group.querySelectorAll(`:scope > [data-dnd="${d.kind}"]`)].filter(n => n !== d.el);
   const before = items.find(n => { const rr = n.getBoundingClientRect(); return y < rr.top + rr.height / 2; });
@@ -680,7 +689,7 @@ function dragEnd(cancel){
   if (cancel){ render(); return; }
   const group = d.el.parentElement, cat = group && group.dataset.cat, id = d.el.dataset.id;
   const ids = [...group.querySelectorAll(`:scope > [data-dnd="${d.kind}"]`)].map(n => n.dataset.id);
-  if (d.kind === 'task') dropTask(id, cat, ids); else dropRoutine(id, cat, ids);
+  if (d.kind === 'task') dropTask(id, cat, ids); else if (d.kind === 'cat') dropCat(ids); else dropRoutine(id, cat, ids);
 }
 function dropTask(id, cat, ids){
   const changed = [];
@@ -692,6 +701,12 @@ function dropTask(id, cat, ids){
   render();
   changed.forEach(tid => enqueue(tid, () => api('saveTask', S.tasks[tid])));
   if (S.tasks[id] && changed.includes(id) && S.cats[cat]) toast(`'${S.cats[cat].name}'(으)로 옮겼어요`);
+}
+function dropCat(ids){
+  const arch = archivedCats().map(c => c.id), all = ids.concat(arch);
+  if (sortedCats().map(c => c.id).join() === ids.join()) { render(); return; }
+  all.forEach((cid, k) => { S.cats[cid] = { ...S.cats[cid], order: k }; });
+  render(); enqueue('order', () => api('reorderCategories', all));
 }
 function dropRoutine(id, cat, ids){
   const moved = S.routines[id] && S.routines[id].categoryId !== cat, changed = [];
@@ -917,13 +932,13 @@ function renderSettings(){
     <div class="tabs"><button class="${tab === 'cats' ? 'on' : ''}" data-tab="cats">카테고리</button><button class="${tab === 'routines' ? 'on' : ''}" data-tab="routines">루틴</button><button class="${tab === 'info' ? 'on' : ''}" data-tab="info">기타</button></div>`;
   if (tab === 'cats'){
     const cats = sortedCats(), arch = archivedCats();
-    h += '<div class="list">' + cats.map((c, i) => `<div class="li"><span class="dot" style="background:${c.color}"></span>
-      <button class="li-main" data-editcat="${c.id}"><span>${esc(c.name)}</span>${c.gcal ? '<span class="tag">📅 구글캘린더 연동</span>' : ''}</button>
-      <button class="icon-btn" data-up="${c.id}" ${i === 0 ? 'disabled' : ''} aria-label="위로">↑</button>
-      <button class="icon-btn" data-down="${c.id}" ${i === cats.length - 1 ? 'disabled' : ''} aria-label="아래로">↓</button></div>`).join('') + '</div>'
-      + '<button class="btn wide" data-act="newcat">+ 카테고리 추가</button>';
-    if (arch.length) h += `<div class="sec-h">📦 보관한 카테고리 ${arch.length}개</div><div class="tip">메인 화면에서는 숨겨져요. 할일·루틴은 그대로 남아 있어요.</div><div class="list archived">` + arch.map(c => `<div class="li"><span class="dot" style="background:${c.color}"></span>
-      <button class="li-main" data-editcat="${c.id}"><span>${esc(c.name)}</span></button><button class="mini" data-unarchcat="${c.id}">꺼내기</button></div>`).join('') + '</div>';
+    const pill = (c, drag) => `<div class="cat-pill" data-editcat="${c.id}" ${drag ? `data-dnd="cat" data-id="${c.id}"` : ''} role="button">
+      <span class="nm" style="color:${ink(c.color)}">${esc(c.name)}</span>${c.gcal ? '<span class="cal" title="구글캘린더 연동">📅</span>' : ''}<span class="ed">편집</span></div>`;
+    h += `<div class="tip">카테고리를 눌러 편집하거나, 길게 눌러 끌어서 순서를 바꿀 수 있어요. 할일은 카테고리별로 관리돼요.</div>
+      <div class="cat-sec"><b>일반</b><button class="pill-btn" data-act="newcat">＋ 추가하기</button></div>
+      <div class="cat-list" data-dnd-group="cat">${cats.map(c => pill(c, true)).join('')}</div>`;
+    if (arch.length) h += `<div class="cat-sec"><b>보관된 카테고리</b></div><div class="tip">메인 화면에서는 숨겨져요. 눌러서 꺼낼 수 있어요.</div>
+      <div class="cat-list archived">${arch.map(c => pill(c, false)).join('')}</div>`;
   } else if (tab === 'routines'){
     h += `<div class="tip">카테고리의 ＋로 루틴을 추가하고, 루틴을 길게 눌러 끌면 순서나 카테고리를 바꿀 수 있어요.</div>`;
     const live = Object.values(S.routines).filter(r => !r.deleted && S.cats[r.categoryId] && !S.cats[r.categoryId].deleted);
@@ -989,7 +1004,7 @@ $('#settings').addEventListener('change', e => {
 });
 $('#settings').addEventListener('click', e => {
   if (Date.now() < (Drag.suppressUntil || 0)) return;
-  const b = e.target.closest('button,[data-editrt]'); if (!b) return;
+  const b = e.target.closest('button,[data-editrt],[data-editcat]'); if (!b) return;
   const ds = b.dataset;
   if (ds.act === 'back'){ S.settings = null; $('#settings').classList.add('hidden'); render(); return; }
   if (ds.act === 'copyconn'){ copyText($('#connCode').value); return; }
