@@ -322,11 +322,29 @@ function catMap_() {
   return m;
 }
 
-/** 루틴 저장. '자동 추가'면 앞으로 7일치 할일을 바로 만들어 돌려줌 */
-function saveRoutine(r) {
+/**
+ * 루틴 저장. '자동 추가'면 앞으로 7일치 할일을 바로 만들어 돌려줌
+ * cleanup: 루틴을 고칠 때 새 설정에 맞지 않는(또는 자동→수동으로 바뀐) 오늘 이후 할일 처리
+ *          'all' 모두 삭제 / 'undone' 미완료만 삭제 / 'none'(기본) 그대로 둠
+ */
+function saveRoutine(r, cleanup) {
   return withLock_(function () {
+    var old = getObj_('routines', r.id);
     r.deleted = false;
     writeObj_('routines', r);
+    if (old && (cleanup === 'all' || cleanup === 'undone')) {
+      var today = today_(), sh = sheet_('tasks'), cats = catMap_();
+      readRows_('tasks').forEach(function (row) {
+        if (row.deleted || row.date < today) return;
+        var t = parse_(row);
+        if (!t || t.routineId !== r.id) return;
+        if (cleanup === 'undone' && t.done) return;
+        if (!((old.autoAdd && !r.autoAdd) || !routineMatches_(r, t.date))) return;
+        t.deleted = true;
+        syncCalendar_(t, cats[t.categoryId] || null);
+        writeAt_(sh, row.row, t);
+      });
+    }
     if (!r.autoAdd) return [];
     var t = today_();
     return generate_(t, addDays_(t, 6), r.id);
