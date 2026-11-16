@@ -899,11 +899,9 @@ function notifySection(){
   const r = reminderPrefs();
   const opt = (name, list, cur) => `<div class="chips">${list.map(([k, l]) => `<button class="opt ${String(cur) === String(k) ? 'on' : ''}" data-rp="${name}" data-v="${k}">${l}</button>`).join('')}</div>`;
   return `<div class="list" style="margin-bottom:14px">
-    <div class="li" style="padding:14px"><div class="li-main"><span>🔔 잠금화면 알림 (이 휴대폰)</span><span class="s">켜면 이 앱이 직접 알려요. 구글캘린더 "할일 알림"은 더 이상 만들지 않아 알림이 두 번 오지 않아요.</span></div>
+    <div class="li" style="padding:14px"><div class="li-main"><span>🔔 잠금화면 알림 (이 휴대폰)</span><span class="s">시간을 정한 할일은 그 시간에 알려요(할일에 알림을 따로 정하면 그 시각에). 구글캘린더 "할일 알림"은 만들지 않아 알림이 두 번 오지 않아요.</span></div>
       <input type="checkbox" class="sw" id="rp_on" ${r.enabled ? 'checked' : ''}></div>
     ${r.enabled ? `
-    <div class="li" style="padding:14px;flex-wrap:wrap;gap:10px"><div class="li-main"><span>⏰ 시간 정한 할일</span><span class="s">할일에 알림을 따로 정하면 그게 우선이에요</span></div>
-      ${opt('offset', [[-1, '정한 것만'], [0, '정시'], [10, '10분 전'], [30, '30분 전'], [60, '1시간 전']], r.offset)}</div>
     <div class="li" style="padding:14px;flex-wrap:wrap;gap:10px"><div class="li-main"><span>📌 기한 임박</span><span class="s">기한(D-day)을 정한 할일</span></div>
       ${opt('due', [['off', '끄기'], ['eve', '전날 밤 9시'], ['day', '당일 아침 9시'], ['both', '둘 다']], r.due)}</div>
     <div class="li" style="padding:14px"><div class="li-main"><span>☀️ 아침 요약 (오전 8시)</span><span class="s">오늘 할일 개수와 목록을 알려줘요</span></div>
@@ -981,7 +979,7 @@ function renderSettings(){
       <h4>↪ 할일 넘기기</h4><p>날짜 제목 옆 [미완료 N개 넘기기]를 누르면 못 한 할일을 골라 내일, 오늘 또는 원하는 날짜로 한 번에 옮길 수 있어요. 하나만 옮길 때는 할일을 눌러 [내일 하기] 또는 [다른 날로]를 쓰세요. 옮겨진 할일에는 "↪ 원래 날짜"가 표시돼요.</p>
       <h4>🔄 동기화</h4><p>모든 데이터는 내 구글 드라이브의 "TodoTracker 데이터" 시트 (예전에 만든 경우 "나의 할일 데이터")에 저장돼요. 폰·PC·안드로이드 앱이 같은 서버에 연결되어 자동으로 맞춰지고, 다른 기기에서 바꾼 내용은 20초 안에(또는 앱으로 돌아올 때) 반영돼요. 제목 옆 점이 초록색이면 저장 완료, 주황색이면 저장 중이에요.</p>
       <h4>✏️ 빠르게 추가</h4><p>오른쪽 아래 ＋ 버튼을 누르고 "내일 오후 3시 치과", "금요일까지 레포트 제출"처럼 말하듯 적으면 날짜·시간·기한·카테고리를 알아서 채워요. "매주 월~금 오전 8시 학원 11월만", "매일 듀오링고", "화목 7시 운동 2주 동안"처럼 반복을 적으면 루틴(반복 일정)으로 만들어요. 한 줄에 하나씩 여러 개를 한 번에 넣을 수 있고, 저장 전에 카테고리를 바꿀 수 있어요. "#카테고리"로 직접 정할 수도 있어요.</p>
-      <h4>🔔 시간 알림</h4><p>기본은 구글캘린더 "할일 알림" 캘린더로 알려요. 안드로이드 앱에서 "잠금화면 알림"을 켜면 앱이 직접 알려 주고, 알림에서 바로 완료할 수도 있어요.</p>
+      <h4>🔔 시간 알림</h4><p>안드로이드 앱에서는 시간을 정한 할일마다 그 시간에 잠금화면 알림이 와요(할일 편집의 [알림]에서 10분 전 등으로 따로 정할 수 있어요). 앱 알림을 끄면 구글캘린더 "할일 알림" 캘린더로 알려요. 안드로이드 앱에서 "잠금화면 알림"을 켜면 앱이 직접 알려 주고, 알림에서 바로 완료할 수도 있어요.</p>
       <h4>📅 구글캘린더 연동</h4><p>카테고리 설정에서 "구글캘린더 연동"을 켠 카테고리(기본: 외출)의 할일은 내 기본 구글캘린더에 일정으로 등록·수정·삭제돼요. 시간이 없으면 오전 8시~9시 일정으로 들어가요.</p>
       <h4>↻ 루틴</h4><p>"자동 추가"를 켜면(시작일·종료일 필수) 매일 자정에 앞으로 7일치 할일이 자동으로 생겨요. 빠르게 추가로 만든 루틴은 수동으로 시작해요. 끄면 해당 요일에 흐리게 표시되고 눌러서 바로 넣을 수 있어요. 자동 추가된 할일을 지우면 그날은 다시 생기지 않아요.</p>
       <h4>📌 기한</h4><p>할일에 기한을 정하면 D-day가 표시돼요. 기한이 하루 이내로 남으면 빨간색으로 바뀌어요.</p></div>`;
@@ -1394,7 +1392,7 @@ $('#cn_go').addEventListener('click', async () => {
     CONN = conn; store.set(CONN_KEY, JSON.stringify(conn));
     if (IS_APP) try { window.TodoAndroid.setConnection(url, token); } catch (e) {}
     $('#connect').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#fab').classList.remove('hidden');
-    applyLoad(d); toast('연결됐어요!');
+    applyLoad(d); toast('연결됐어요!'); setTimeout(setupDefaultReminders, 2500);
   } catch (e) {
     msg.textContent = e.message;
   } finally { btn.disabled = false; btn.textContent = '연결하기'; }
@@ -1414,6 +1412,21 @@ function takeWidgetDone(){
 function onAppResume(){ takeWidgetDone(); refresh(); }
 
 /* ───────── 시작 ───────── */
+/* 안드로이드 앱: 처음 한 번, 시간 정한 할일은 그 시간에 푸시 알림이 오도록 자동 설정 */
+function setupDefaultReminders(){
+  if (!IS_APP || !window.TodoAndroid.setReminderPrefs) return;
+  const r = reminderPrefs();
+  if (store.get('todo.rpInit2') === '1'){
+    // 설정 이후: 시간 정한 할일은 항상 '정시' (선택 칸 없음)
+    if (r.enabled && Number(r.offset) !== 0){ r.offset = 0; saveReminderPrefs(r); }
+    return;
+  }
+  r.enabled = true; r.offset = 0;
+  if (!r.due) r.due = 'eve';
+  saveReminderPrefs(r);
+  store.set('todo.rpInit2', '1');
+  toast('이제 시간을 정한 할일은 그 시간에 알림이 와요');
+}
 function start(){
   if (!CONN){ showConnect(); return; }
   try {
@@ -1421,6 +1434,7 @@ function start(){
     if (c){ S.cats = byId(c.cats); S.routines = byId(c.routines); S.tasks = byId(c.tasks); if (c.prefs) S.prefs = c.prefs; }
   } catch (e) {}
   render(); takeWidgetDone(); refresh();
+  setupDefaultReminders();
   if (IS_APP) try { window.TodoAndroid.setConnection(CONN.url, CONN.token); } catch (e) {}
 }
 applyTheme();
